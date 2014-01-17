@@ -1,0 +1,15 @@
+Firefox Decrypt is a tool to extract passwords from Firefox profiles.
+
+It can be used to recover passwords from a profile protected by a Master
+Password as long as the latter is known.
+If a profile is not protected by a Master Password, a password will still be
+requested but can be left blank.
+
+This script is written in Python and is compatible with versions 2.6-2.7.
+
+Additionally it requires access to libnss3 which is part of Firefox and
+Thunderbird, although depending on system configuration, the script may fail to
+locate it there.
+
+Alternatively you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
+libnss3 is part of http://www.mozilla.org/projects/security/pki/nss/
