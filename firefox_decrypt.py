@@ -22,6 +22,7 @@ from sys import stdout as out
 from sys import stderr as err
 import os
 import sqlite3
+import json
 from ConfigParser import ConfigParser
 from base64 import b64decode
 from os import path
@@ -30,8 +31,72 @@ from ctypes import Structure, CDLL
 from getpass import getpass
 
 
+class NotFoundError(Exception):
+    pass
+
+
 class Item(Structure):
     _fields_ = [('type', c_uint), ('data', c_void_p), ('len', c_uint)]
+
+
+class Credentials(object):
+    def __init__(self, db):
+        self.db = db
+
+        if not path.isfile(db):
+            raise NotFoundError("Error - {0} database not found\n".format(db))
+
+        err.write("Info - Using {0} for credentials.\n".format(db))
+
+    def __iter__(self):
+        pass
+
+    def done(self):
+        pass
+
+
+class SqliteCredentials(Credentials):
+    def __init__(self, profile):
+        db = profile + "/signons.sqlite"
+
+        super(SqliteCredentials, self).__init__(db)
+
+        self.conn = sqlite3.connect(db)
+        self.c = self.conn.cursor()
+
+    def __iter__(self):
+        self.c.execute("SELECT hostname, encryptedUsername, encryptedPassword "
+                       "FROM moz_logins")
+        for i in self.c:
+            # yields hostname, encryptedUsername, encryptedPassword
+            yield i
+
+    def done(self):
+        super(SqliteCredentials, self).done()
+
+        self.c.close()
+        self.conn.close()
+
+
+class JsonCredentials(Credentials):
+    def __init__(self, profile):
+        db = profile + "/logins.json"
+
+        super(JsonCredentials, self).__init__(db)
+
+    def __iter__(self):
+        with open(self.db) as fh:
+            data = json.load(fh)
+
+            try:
+                logins = data["logins"]
+            except:
+                raise Exception("Unrecognized format in {0}".format(self.db))
+
+            for i in logins:
+                # yields hostname, encryptedUsername, encryptedPassword
+                yield (i["hostname"], i["encryptedUsername"],
+                       i["encryptedPassword"])
 
 
 def decrypt_passwords(profile, password):
@@ -39,12 +104,6 @@ def decrypt_passwords(profile, password):
     Decrypt requested profile using the provided password and print out all
     stored passwords.
     """
-
-    db = profile + "/signons.sqlite"
-
-    if not path.isfile(db):
-        err.write("Error - signons.sqlite database not found\n")
-        return 4
 
     if libnss.NSS_Init(profile) != 0:
         err.write("Error - Couldn't initialize NSS\n")
@@ -63,11 +122,6 @@ def decrypt_passwords(profile, password):
     else:
         err.write("Warning - Attempting decryption with no Master Password\n")
 
-    conn = sqlite3.connect(db)
-    c = conn.cursor()
-    c.execute("SELECT hostname, encryptedUsername, encryptedPassword "
-              "FROM moz_logins")
-
     username = Item()
     passwd = Item()
     outuser = Item()
@@ -76,7 +130,17 @@ def decrypt_passwords(profile, password):
     # Any password in this profile store at all?
     got_password = False
 
-    for host, user, passw in c:
+    try:
+        credentials = JsonCredentials(profile)
+    except NotFoundError:
+        try:
+            credentials = SqliteCredentials(profile)
+        except NotFoundError:
+            err.write("Error - Couldn't find credentials file "
+                      "(logins.json or signons.sqlite).\n")
+            return 4
+
+    for host, user, passw in credentials:
         got_password = True
         username.data = cast(c_char_p(b64decode(user)), c_void_p)
         username.len = len(b64decode(user))
@@ -98,8 +162,7 @@ def decrypt_passwords(profile, password):
         out.write("Password: '{0}'\n\n".format(string_at(outpass.data,
                                                          outpass.len)))
 
-    c.close()
-    conn.close()
+    credentials.done()
     libnss.NSS_Shutdown()
 
     if not got_password:
