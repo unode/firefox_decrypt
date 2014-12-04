@@ -26,6 +26,12 @@ python firefox_decrypt.py
 and it will prompt for which profile to use and the master password of that
 profile.
 
+If you don't keep your Firefox profiles on a standard folder you can call the script with:
+
+```
+python firefox_decrypt.py /folder/containing/profiles.ini/
+```
+
 If you don't want to display all passwords on screen you can use:
 
 ```
