@@ -15,6 +15,25 @@ Alternatively you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
 libnss3 is part of http://www.mozilla.org/projects/security/pki/nss/
 
 
+*Usage*
+
+Simply run:
+
+```
+python firefox_decrypt.py
+```
+
+and it will prompt for which profile to use and the master password of that
+profile.
+
+If you don't want to display all passwords on screen you can use:
+
+```
+python firefox_decrypt.py | grep -C2 keyword
+```
+where keyword is part of the expected output (URL, username, email, password ...)
+
+
 *Changelog*
 
 0.2 - Added support for logins.json. New format since Firefox 32.
