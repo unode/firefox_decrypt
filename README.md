@@ -15,7 +15,7 @@ Alternatively you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
 libnss3 is part of http://www.mozilla.org/projects/security/pki/nss/
 
 
-*Usage*
+**Usage**
 
 Simply run:
 
@@ -34,8 +34,8 @@ python firefox_decrypt.py | grep -C2 keyword
 where keyword is part of the expected output (URL, username, email, password ...)
 
 
-*Changelog*
+**Changelog**
 
-0.2 - Added support for logins.json. New format since Firefox 32.
+**0.2** - Added support for logins.json. New format since Firefox 32.
 
-0.1 - Initial version supporting Firefox 3.5 and up.
+**0.1** - Initial version supporting Firefox 3.5 and up.
