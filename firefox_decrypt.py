@@ -219,7 +219,7 @@ def main():
 
     if not os.path.isfile(profileini):
         err.write("ERROR: profile.ini not found in {0}, "
-            "please provide the correct path\n".format(basepath))
+                  "please provide the correct path\n".format(basepath))
         sys.exit(2)
 
     # Read profiles from Firefox profile folder
@@ -239,11 +239,23 @@ def main():
     sys.exit(out)
 
 if __name__ == "__main__":
+
+    firefox = ""
+
+    if os.name == "nt":
+        nssname = "nss3.dll"
+        firefox = r"c:\Program Files (x86)\Mozilla Firefox"
+        os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
+
+    else:
+        nssname = "libnss3.so"
+
     try:
-        libnss = CDLL("libnss3.so")
+        libnss = CDLL(os.path.join(firefox, nssname))
+
     except Exception as e:
-        err.write("Problems opening 'libnss3.so' required for password "
-            "decryption\n")
+        err.write("Problems opening '{0}' required for password "
+                  "decryption\n".format(nssname))
         err.write("Error was {0}\n".format(e))
         sys.exit(3)
 
