@@ -5,6 +5,9 @@ Password as long as the latter is known.
 If a profile is not protected by a Master Password, a password will still be
 requested but can be left blank.
 
+This tool does not try to crack or brute-force the Master Password in any way.
+If the Master Password is not known it will simply fail to recover any data.
+
 This script is written in Python and is compatible with versions 2.6-2.7.
 
 Additionally it requires access to libnss3 which is part of Firefox and
