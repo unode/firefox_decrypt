@@ -65,10 +65,10 @@ class SqliteCredentials(Credentials):
         self.c = self.conn.cursor()
 
     def __iter__(self):
-        self.c.execute("SELECT hostname, encryptedUsername, encryptedPassword "
+        self.c.execute("SELECT hostname, encryptedUsername, encryptedPassword, encType "
                        "FROM moz_logins")
         for i in self.c:
-            # yields hostname, encryptedUsername, encryptedPassword
+            # yields hostname, encryptedUsername, encryptedPassword, encType
             yield i
 
     def done(self):
@@ -96,7 +96,7 @@ class JsonCredentials(Credentials):
             for i in logins:
                 # yields hostname, encryptedUsername, encryptedPassword
                 yield (i["hostname"], i["encryptedUsername"],
-                       i["encryptedPassword"])
+                       i["encryptedPassword"], i["encType"])
 
 
 def decrypt_passwords(profile, password):
@@ -140,27 +140,33 @@ def decrypt_passwords(profile, password):
                       "(logins.json or signons.sqlite).\n")
             return 4
 
-    for host, user, passw in credentials:
+    for host, user, passw, enctype in credentials:
         got_password = True
-        username.data = cast(c_char_p(b64decode(user)), c_void_p)
-        username.len = len(b64decode(user))
-        passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
-        passwd.len = len(b64decode(passw))
 
-        if libnss.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
-            err.write("Error - Passwords protected by a Master Password!\n")
-            return 8
+        if enctype:
+            username.data = cast(c_char_p(b64decode(user)), c_void_p)
+            username.len = len(b64decode(user))
+            passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
+            passwd.len = len(b64decode(passw))
 
-        if libnss.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
-            # This shouldn't really happen but failsafe just in case
-            err.write("Error - Given Master Password is not correct!\n")
-            return 9
+            if libnss.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
+                err.write("Error - Passwords protected by a Master Password!\n")
+                return 8
 
-        out.write("Website:   {0}\n".format(host.encode("utf-8")))
-        out.write("Username: '{0}'\n".format(string_at(outuser.data,
-                                                       outuser.len)))
-        out.write("Password: '{0}'\n\n".format(string_at(outpass.data,
-                                                         outpass.len)))
+            if libnss.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
+                # This shouldn't really happen but failsafe just in case
+                err.write("Error - Given Master Password is not correct!\n")
+                return 9
+
+            out.write("Website:   {0}\n".format(host.encode("utf-8")))
+            out.write("Username: '{0}'\n".format(string_at(outuser.data,
+                                                           outuser.len)))
+            out.write("Password: '{0}'\n\n".format(string_at(outpass.data,
+                                                             outpass.len)))
+        else:
+            out.write("Website:   {0}\n".format(host.encode("utf-8")))
+            out.write("Username: '{0}'\n".format(user))
+            out.write("Password: '{0}'\n\n".format(passw))
 
     credentials.done()
     libnss.NSS_Shutdown()
@@ -234,9 +240,9 @@ def main():
     password = ask_password(profile)
 
     # And finally decode all passwords
-    out = decrypt_passwords(profile, password)
+    output = decrypt_passwords(profile, password)
 
-    sys.exit(out)
+    sys.exit(output)
 
 if __name__ == "__main__":
 
