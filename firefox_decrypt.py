@@ -209,12 +209,16 @@ def ask_password(profile):
     input_encoding = utf8 if sys.stdin.encoding in (None, 'ascii') else sys.stdin.encoding
     passmsg = "\nMaster Password for profile {}: ".format(profile)
 
-    passwd = getpass(passmsg)
+    if sys.stdin.isatty():
+        passwd = getpass(passmsg)
 
-    if input_encoding != utf8:
-        passwd = passwd.decode(input_encoding).encode(utf8)
+        if input_encoding != utf8:
+            passwd = passwd.decode(input_encoding).encode(utf8)
 
-    return passwd
+        return passwd
+    else:
+        # Ability to read the password from stdin (echo "pass" | ./firefox_...)
+        return sys.stdin.readline().rstrip("\n")
 
 
 def main():
