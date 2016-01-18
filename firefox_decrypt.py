@@ -205,8 +205,16 @@ def ask_password(profile):
     """
     Prompt for profile password
     """
+    utf8 = "UTF-8"
+    input_encoding = utf8 if sys.stdin.encoding in (None, 'ascii') else sys.stdin.encoding
     passmsg = "\nMaster Password for profile {}: ".format(profile)
-    return getpass(passmsg)
+
+    passwd = getpass(passmsg)
+
+    if input_encoding != utf8:
+        passwd = passwd.decode(input_encoding).encode(utf8)
+
+    return passwd
 
 
 def main():
