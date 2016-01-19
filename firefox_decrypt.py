@@ -99,6 +99,17 @@ class JsonCredentials(Credentials):
                        i["encryptedPassword"], i["encType"])
 
 
+def handle_error():
+    """If an error happens in libnss, handle it and print some debug information
+    """
+    error = libnss.PORT_GetError()
+    libnss.PR_ErrorToString.restype = c_char_p
+    libnss.PR_ErrorToName.restype = c_char_p
+    error_str = libnss.PR_ErrorToString(error)
+    error_name = libnss.PR_ErrorToName(error)
+    err.write("[DEBUG] {0}: {1}\n".format(error_name, error_str))
+
+
 def decrypt_passwords(profile, password):
     """
     Decrypt requested profile using the provided password and print out all
@@ -107,6 +118,7 @@ def decrypt_passwords(profile, password):
 
     if libnss.NSS_Init(profile) != 0:
         err.write("Error - Couldn't initialize NSS\n")
+        handle_error()
         return 5
 
     if password:
@@ -114,10 +126,12 @@ def decrypt_passwords(profile, password):
         keyslot = libnss.PK11_GetInternalKeySlot()
         if keyslot is None:
             err.write("Error - Failed to retrieve internal KeySlot\n")
+            handle_error()
             return 6
 
         if libnss.PK11_CheckUserPassword(keyslot, password) != 0:
             err.write("Error - Master password is not correct\n")
+            handle_error()
             return 7
     else:
         err.write("Warning - Attempting decryption with no Master Password\n")
@@ -151,11 +165,13 @@ def decrypt_passwords(profile, password):
 
             if libnss.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
                 err.write("Error - Passwords protected by a Master Password!\n")
+                handle_error()
                 return 8
 
             if libnss.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
                 # This shouldn't really happen but failsafe just in case
                 err.write("Error - Given Master Password is not correct!\n")
+                handle_error()
                 return 9
 
             out.write("Website:   {0}\n".format(host.encode("utf-8")))
