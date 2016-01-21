@@ -38,6 +38,13 @@ NSS = None
 class NotFoundError(Exception):
     pass
 
+class Exit(Exception):
+    def __init__(self, exitcode):
+        self.exitcode = exitcode
+
+    def __unicode__(self):
+        return "Premature program exit with exit code {0}".format(self.exitcode)
+
 
 class Item(Structure):
     _fields_ = [('type', c_uint), ('data', c_void_p), ('len', c_uint)]
@@ -123,7 +130,7 @@ def decrypt_passwords(profile, password):
     if NSS.NSS_Init(profile) != 0:
         err.write("ERROR - Couldn't initialize NSS\n")
         handle_error()
-        return 5
+        raise Exit(5)
 
     if password:
         password = c_char_p(password)
@@ -131,12 +138,12 @@ def decrypt_passwords(profile, password):
         if keyslot is None:
             err.write("ERROR - Failed to retrieve internal KeySlot\n")
             handle_error()
-            return 6
+            raise Exit(6)
 
         if NSS.PK11_CheckUserPassword(keyslot, password) != 0:
             err.write("ERROR - Master password is not correct\n")
             handle_error()
-            return 7
+            raise Exit(7)
     else:
         err.write("Warning - Attempting decryption with no Master Password\n")
 
@@ -156,7 +163,7 @@ def decrypt_passwords(profile, password):
         except NotFoundError:
             err.write("ERROR - Couldn't find credentials file "
                       "(logins.json or signons.sqlite).\n")
-            return 4
+            raise Exit(4)
 
     for host, user, passw, enctype in credentials:
         got_password = True
@@ -170,13 +177,13 @@ def decrypt_passwords(profile, password):
             if NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
                 err.write("ERROR - Passwords protected by a Master Password!\n")
                 handle_error()
-                return 8
+                raise Exit(8)
 
             if NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
                 # This shouldn't really happen but failsafe just in case
                 err.write("ERROR - Given Master Password is not correct!\n")
                 handle_error()
-                return 9
+                raise Exit(9)
 
             out.write("Website:   {0}\n".format(host.encode("utf-8")))
             out.write("Username: '{0}'\n".format(string_at(outuser.data,
@@ -193,8 +200,6 @@ def decrypt_passwords(profile, password):
 
     if not got_password:
         err.write("Warning - No passwords found in selected profile\n")
-
-    return 0
 
 
 def ask_section(profiles):
@@ -280,7 +285,7 @@ def load_libnss():
         err.write("Problems opening '{0}' required for password "
                   "decryption\n".format(nssname))
         err.write("Error was {0}\n".format(e))
-        return 3
+        raise Exit(3)
 
 
 def read_profiles(basepath):
@@ -289,7 +294,7 @@ def read_profiles(basepath):
     if not os.path.isfile(profileini):
         err.write("ERROR: profile.ini not found in {0}, "
                   "please provide the correct path\n".format(basepath))
-        sys.exit(2)
+        raise Exit(2)
 
     # Read profiles from Firefox profile folder
     profiles = ConfigParser()
@@ -320,4 +325,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exit as e:
+        sys.exit(e.exitcode)
