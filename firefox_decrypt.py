@@ -30,6 +30,9 @@ from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
 from ctypes import Structure, CDLL
 from getpass import getpass
 
+VERBOSE = False
+NSS = None
+
 
 class NotFoundError(Exception):
     pass
@@ -44,7 +47,7 @@ class Credentials(object):
         self.db = db
 
         if not path.isfile(db):
-            raise NotFoundError("Error - {0} database not found\n".format(db))
+            raise NotFoundError("ERROR - {0} database not found\n".format(db))
 
         err.write("Info - Using {0} for credentials.\n".format(db))
 
@@ -102,11 +105,11 @@ class JsonCredentials(Credentials):
 def handle_error():
     """If an error happens in libnss, handle it and print some debug information
     """
-    error = libnss.PORT_GetError()
-    libnss.PR_ErrorToString.restype = c_char_p
-    libnss.PR_ErrorToName.restype = c_char_p
-    error_str = libnss.PR_ErrorToString(error)
-    error_name = libnss.PR_ErrorToName(error)
+    error = NSS.PORT_GetError()
+    NSS.PR_ErrorToString.restype = c_char_p
+    NSS.PR_ErrorToName.restype = c_char_p
+    error_str = NSS.PR_ErrorToString(error)
+    error_name = NSS.PR_ErrorToName(error)
     err.write("[DEBUG] {0}: {1}\n".format(error_name, error_str))
 
 
@@ -116,21 +119,21 @@ def decrypt_passwords(profile, password):
     stored passwords.
     """
 
-    if libnss.NSS_Init(profile) != 0:
-        err.write("Error - Couldn't initialize NSS\n")
+    if NSS.NSS_Init(profile) != 0:
+        err.write("ERROR - Couldn't initialize NSS\n")
         handle_error()
         return 5
 
     if password:
         password = c_char_p(password)
-        keyslot = libnss.PK11_GetInternalKeySlot()
+        keyslot = NSS.PK11_GetInternalKeySlot()
         if keyslot is None:
-            err.write("Error - Failed to retrieve internal KeySlot\n")
+            err.write("ERROR - Failed to retrieve internal KeySlot\n")
             handle_error()
             return 6
 
-        if libnss.PK11_CheckUserPassword(keyslot, password) != 0:
-            err.write("Error - Master password is not correct\n")
+        if NSS.PK11_CheckUserPassword(keyslot, password) != 0:
+            err.write("ERROR - Master password is not correct\n")
             handle_error()
             return 7
     else:
@@ -150,7 +153,7 @@ def decrypt_passwords(profile, password):
         try:
             credentials = SqliteCredentials(profile)
         except NotFoundError:
-            err.write("Error - Couldn't find credentials file "
+            err.write("ERROR - Couldn't find credentials file "
                       "(logins.json or signons.sqlite).\n")
             return 4
 
@@ -163,14 +166,14 @@ def decrypt_passwords(profile, password):
             passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
             passwd.len = len(b64decode(passw))
 
-            if libnss.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
-                err.write("Error - Passwords protected by a Master Password!\n")
+            if NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
+                err.write("ERROR - Passwords protected by a Master Password!\n")
                 handle_error()
                 return 8
 
-            if libnss.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
+            if NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
                 # This shouldn't really happen but failsafe just in case
-                err.write("Error - Given Master Password is not correct!\n")
+                err.write("ERROR - Given Master Password is not correct!\n")
                 handle_error()
                 return 9
 
@@ -185,7 +188,7 @@ def decrypt_passwords(profile, password):
             out.write("Password: '{0}'\n\n".format(passw))
 
     credentials.done()
-    libnss.NSS_Shutdown()
+    NSS.NSS_Shutdown()
 
     if not got_password:
         err.write("Warning - No passwords found in selected profile\n")
