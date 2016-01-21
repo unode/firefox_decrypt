@@ -23,6 +23,7 @@ from sys import stderr as err
 import os
 import sqlite3
 import json
+import argparse
 from ConfigParser import ConfigParser
 from base64 import b64decode
 from os import path
@@ -240,43 +241,27 @@ def ask_password(profile):
         return sys.stdin.readline().rstrip("\n")
 
 
-def main():
+def parse_sys_args():
     profile_path = "~/.mozilla/firefox/"
 
-    if len(sys.argv) > 2:
-        err.write("Usage: python {0} [profile_location]\n".format(sys.argv[0]))
-        err.write("   ... profile_location defaults to {0}\n".format(
-            profile_path))
-        sys.exit(1)
-    elif len(sys.argv) == 2:
-        profile_path = sys.argv[-1]
+    parser = argparse.ArgumentParser(
+        description="Access Firefox profiles and decrypt existing passwords"
+    )
+    parser.add_argument("profile", nargs='?', default=profile_path,
+                        help="Path to profile folder (default: {0})".format(profile_path))
+    parser.add_argument("-v", "--verbose", action="store_true", default=False,
+                        help="Enable debugging/verbose output")
 
-    basepath = path.expanduser(profile_path)
-    profileini = os.path.join(basepath, "profiles.ini")
+    args = parser.parse_args()
 
-    if not os.path.isfile(profileini):
-        err.write("ERROR: profile.ini not found in {0}, "
-                  "please provide the correct path\n".format(basepath))
-        sys.exit(2)
+    if args.verbose:
+        global VERBOSE
+        VERBOSE = True
 
-    # Read profiles from Firefox profile folder
-    profiles = ConfigParser()
-    profiles.read(profileini)
+    return args
 
-    # Ask user which profile want's to open
-    section = ask_section(profiles)
 
-    # Prompt for Master Password
-    profile = os.path.join(basepath, section)
-    password = ask_password(profile)
-
-    # And finally decode all passwords
-    output = decrypt_passwords(profile, password)
-
-    sys.exit(output)
-
-if __name__ == "__main__":
-
+def load_libnss():
     firefox = ""
 
     if os.name == "nt":
@@ -288,12 +273,51 @@ if __name__ == "__main__":
         nssname = "libnss3.so"
 
     try:
-        libnss = CDLL(os.path.join(firefox, nssname))
+        global NSS
+        NSS = CDLL(os.path.join(firefox, nssname))
 
     except Exception as e:
         err.write("Problems opening '{0}' required for password "
                   "decryption\n".format(nssname))
         err.write("Error was {0}\n".format(e))
-        sys.exit(3)
+        return 3
 
+
+def read_profiles(basepath):
+    profileini = os.path.join(basepath, "profiles.ini")
+
+    if not os.path.isfile(profileini):
+        err.write("ERROR: profile.ini not found in {0}, "
+                  "please provide the correct path\n".format(basepath))
+        sys.exit(2)
+
+    # Read profiles from Firefox profile folder
+    profiles = ConfigParser()
+    profiles.read(profileini)
+
+    return profiles
+
+
+def main():
+    args = parse_sys_args()
+
+    load_libnss()
+
+    basepath = path.expanduser(args.profile)
+
+    # Read profiles from profiles.ini in profile folder
+    profiles = read_profiles(basepath)
+
+    # Ask user which profile want's to open
+    section = ask_section(profiles)
+
+    # Prompt for Master Password
+    profile = os.path.join(basepath, section)
+    password = ask_password(profile)
+
+    # And finally decode all passwords
+    decrypt_passwords(profile, password)
+
+
+if __name__ == "__main__":
     main()
