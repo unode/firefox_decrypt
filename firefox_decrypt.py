@@ -24,12 +24,19 @@ import os
 import sqlite3
 import json
 import argparse
-from ConfigParser import ConfigParser
 from base64 import b64decode
 from os import path
 from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
 from ctypes import Structure, CDLL
 from getpass import getpass
+
+try:
+    # Python 3
+    from configparser import ConfigParser
+    raw_input = input
+except ImportError:
+    # Python 2
+    from ConfigParser import ConfigParser
 
 VERBOSE = False
 NSS = None
@@ -37,6 +44,7 @@ NSS = None
 
 class NotFoundError(Exception):
     pass
+
 
 class Exit(Exception):
     def __init__(self, exitcode):
