@@ -8,7 +8,7 @@ requested but can be left blank.
 This tool does not try to crack or brute-force the Master Password in any way.
 If the Master Password is not known it will simply fail to recover any data.
 
-This script is written in Python and is compatible with versions 2.6-2.7.
+This script is written in Python and is compatible with versions 2.7+ and 3.4+.
 
 Additionally it requires access to libnss3 which is part of Firefox and
 Thunderbird, although depending on system configuration, the script may fail to
@@ -44,6 +44,9 @@ where keyword is part of the expected output (URL, username, email, password ...
 
 
 **Changelog**
+
+**0.3** - Polyglot Python 2 and 3. Python 3 now supported.
+        - Improved debugging information with -v or -vv
 
 **0.2** - Added support for logins.json. New format since Firefox 32.
 
