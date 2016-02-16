@@ -1,3 +1,5 @@
+#### About
+
 Firefox Decrypt is a tool to extract passwords from Firefox profiles.
 
 It can be used to recover passwords from a profile protected by a Master
@@ -18,7 +20,7 @@ Alternatively you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
 libnss3 is part of http://www.mozilla.org/projects/security/pki/nss/
 
 
-**Usage**
+#### Usage
 
 Simply run:
 
@@ -43,11 +45,14 @@ python firefox_decrypt.py | grep -C2 keyword
 where keyword is part of the expected output (URL, username, email, password ...)
 
 
-**Changelog**
+#### Changelog
 
-**0.3** - Polyglot Python 2 and 3. Python 3 now supported.
-        - Improved debugging information with -v or -vv
+##### 0.3
+- Polyglot Python 2 and 3. Python 3 now supported.
+- Improved debugging information with -v or -vv
 
-**0.2** - Added support for logins.json. New format since Firefox 32.
+##### 0.2
+- Added support for logins.json. New format since Firefox 32.
 
-**0.1** - Initial version supporting Firefox 3.5 and up.
+##### 0.1
+- Initial version supporting Firefox 3.5 and up.
