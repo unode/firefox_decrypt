@@ -215,7 +215,7 @@ def decrypt_passwords(profile, password):
                 handle_error()
                 raise Exit(8)
 
-            LOG.debug("Decrypting password data '%s'", passwd)
+            LOG.debug("Decrypting password data '%s'", passw)
 
             i = NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
             LOG.debug("Decryption of password returned %s", i)
