@@ -168,7 +168,7 @@ def decrypt_passwords(profile, password):
             handle_error()
             raise Exit(7)
     else:
-        LOG.warn("Warning - Attempting decryption with no Master Password\n")
+        LOG.warn("Warning - Attempting decryption with no Master Password")
 
     username = Item()
     passwd = Item()
