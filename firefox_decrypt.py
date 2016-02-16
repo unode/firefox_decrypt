@@ -148,7 +148,10 @@ def decrypt_passwords(profile, password):
 
     LOG.debug("Initializing NSS with profile path '%s'", profile)
 
-    if NSS.NSS_Init(profile.encode("utf8")) != 0:
+    i = NSS.NSS_Init(profile.encode("utf8"))
+    LOG.debug("Initializing NSS returned %s", i)
+
+    if i != 0:
         LOG.error("Couldn't initialize NSS")
         handle_error()
         raise Exit(5)
@@ -157,18 +160,24 @@ def decrypt_passwords(profile, password):
         LOG.debug("Retrieving internal key slot")
         p_password = c_char_p(password.encode("utf8"))
         keyslot = NSS.PK11_GetInternalKeySlot()
+        LOG.debug("Internal key slot %s", keyslot)
+
         if keyslot is None:
             LOG.error("Failed to retrieve internal KeySlot")
             handle_error()
             raise Exit(6)
 
         LOG.debug("Authenticating with password '%s'", password)
-        if NSS.PK11_CheckUserPassword(keyslot, p_password) != 0:
+
+        i = NSS.PK11_CheckUserPassword(keyslot, p_password)
+        LOG.debug("Checking user password returned %s", i)
+
+        if i != 0:
             LOG.error("Master password is not correct")
             handle_error()
             raise Exit(7)
     else:
-        LOG.warn("Warning - Attempting decryption with no Master Password")
+        LOG.warn("Attempting decryption with no Master Password")
 
     username = Item()
     passwd = Item()
@@ -197,13 +206,21 @@ def decrypt_passwords(profile, password):
             passwd.len = len(b64decode(passw))
 
             LOG.debug("Decrypting username data '%s'", user)
-            if NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
+
+            i = NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None)
+            LOG.debug("Decryption of username returned %s", i)
+
+            if i == -1:
                 LOG.error("Passwords protected by a Master Password!")
                 handle_error()
                 raise Exit(8)
 
             LOG.debug("Decrypting password data '%s'", passwd)
-            if NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
+
+            i = NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
+            LOG.debug("Decryption of password returned %s", i)
+
+            if i == -1:
                 # This shouldn't really happen but failsafe just in case
                 LOG.error("Given Master Password is not correct!")
                 handle_error()
