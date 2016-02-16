@@ -24,11 +24,13 @@ import os
 import sqlite3
 import json
 import argparse
+import logging
 from base64 import b64decode
 from os import path
 from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
 from ctypes import Structure, CDLL
 from getpass import getpass
+LOG = None
 
 try:
     # Python 3
@@ -62,10 +64,11 @@ class Credentials(object):
     def __init__(self, db):
         self.db = db
 
+        LOG.debug("Database location: %s", self.db)
         if not path.isfile(db):
             raise NotFoundError("ERROR - {0} database not found\n".format(db))
 
-        err.write("Info - Using {0} for credentials.\n".format(db))
+        LOG.info("Using %s for credentials.", db)
 
     def __iter__(self):
         pass
@@ -84,6 +87,7 @@ class SqliteCredentials(Credentials):
         self.c = self.conn.cursor()
 
     def __iter__(self):
+        LOG.debug("Reading password database in SQLite format")
         self.c.execute("SELECT hostname, encryptedUsername, encryptedPassword, encType "
                        "FROM moz_logins")
         for i in self.c:
@@ -105,6 +109,7 @@ class JsonCredentials(Credentials):
 
     def __iter__(self):
         with open(self.db) as fh:
+            LOG.debug("Reading password database in JSON format")
             data = json.load(fh)
 
             try:
@@ -113,7 +118,6 @@ class JsonCredentials(Credentials):
                 raise Exception("Unrecognized format in {0}".format(self.db))
 
             for i in logins:
-                # yields hostname, encryptedUsername, encryptedPassword
                 yield (i["hostname"], i["encryptedUsername"],
                        i["encryptedPassword"], i["encType"])
 
@@ -121,12 +125,19 @@ class JsonCredentials(Credentials):
 def handle_error():
     """If an error happens in libnss, handle it and print some debug information
     """
+    LOG.debug("Error during a call to NSS library, trying to obtain error info")
+
     error = NSS.PORT_GetError()
     NSS.PR_ErrorToString.restype = c_char_p
     NSS.PR_ErrorToName.restype = c_char_p
     error_str = NSS.PR_ErrorToString(error)
     error_name = NSS.PR_ErrorToName(error)
-    err.write("[DEBUG] {0}: {1}\n".format(error_name, error_str))
+
+    if sys.version_info[0] > 2:
+        error_name = error_name.decode("utf8")
+        error_str = error_str.decode("utf8")
+
+    LOG.debug("%s: %s", error_name, error_str)
 
 
 def decrypt_passwords(profile, password):
@@ -135,25 +146,29 @@ def decrypt_passwords(profile, password):
     stored passwords.
     """
 
+    LOG.debug("Initializing NSS with profile path '%s'", profile)
+
     if NSS.NSS_Init(profile.encode("utf8")) != 0:
-        err.write("ERROR - Couldn't initialize NSS\n")
+        LOG.error("Couldn't initialize NSS")
         handle_error()
         raise Exit(5)
 
     if password:
-        password = c_char_p(password.encode("utf8"))
+        LOG.debug("Retrieving internal key slot")
+        p_password = c_char_p(password.encode("utf8"))
         keyslot = NSS.PK11_GetInternalKeySlot()
         if keyslot is None:
-            err.write("ERROR - Failed to retrieve internal KeySlot\n")
+            LOG.error("Failed to retrieve internal KeySlot")
             handle_error()
             raise Exit(6)
 
-        if NSS.PK11_CheckUserPassword(keyslot, password) != 0:
-            err.write("ERROR - Master password is not correct\n")
+        LOG.debug("Authenticating with password '%s'", password)
+        if NSS.PK11_CheckUserPassword(keyslot, p_password) != 0:
+            LOG.error("Master password is not correct")
             handle_error()
             raise Exit(7)
     else:
-        err.write("Warning - Attempting decryption with no Master Password\n")
+        LOG.warn("Warning - Attempting decryption with no Master Password\n")
 
     username = Item()
     passwd = Item()
@@ -169,8 +184,7 @@ def decrypt_passwords(profile, password):
         try:
             credentials = SqliteCredentials(profile)
         except NotFoundError:
-            err.write("ERROR - Couldn't find credentials file "
-                      "(logins.json or signons.sqlite).\n")
+            LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
             raise Exit(4)
 
     for host, user, passw, enctype in credentials:
@@ -182,14 +196,16 @@ def decrypt_passwords(profile, password):
             passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
             passwd.len = len(b64decode(passw))
 
+            LOG.debug("Decrypting username data '%s'", user)
             if NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None) == -1:
-                err.write("ERROR - Passwords protected by a Master Password!\n")
+                LOG.error("Passwords protected by a Master Password!")
                 handle_error()
                 raise Exit(8)
 
+            LOG.debug("Decrypting password data '%s'", passwd)
             if NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None) == -1:
                 # This shouldn't really happen but failsafe just in case
-                err.write("ERROR - Given Master Password is not correct!\n")
+                LOG.error("Given Master Password is not correct!")
                 handle_error()
                 raise Exit(9)
 
@@ -197,6 +213,7 @@ def decrypt_passwords(profile, password):
             passw = string_at(outpass.data, outpass.len)
 
         if sys.version_info[0] > 2:
+            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, host)
             user = user.decode("utf8")
             passw = passw.decode("utf8")
 
@@ -208,7 +225,7 @@ def decrypt_passwords(profile, password):
     NSS.NSS_Shutdown()
 
     if not got_password:
-        err.write("Warning - No passwords found in selected profile\n")
+        LOG.warn("No passwords found in selected profile")
 
 
 def ask_section(profiles):
@@ -232,7 +249,10 @@ def ask_section(profiles):
         err.flush()
         choice = raw_input("Choice: ")
 
-    return sections[choice]
+    final_choice = sections[choice]
+    LOG.debug("Profile selection matched %s", final_choice)
+
+    return final_choice
 
 
 def ask_password(profile):
@@ -264,14 +284,10 @@ def parse_sys_args():
     )
     parser.add_argument("profile", nargs='?', default=profile_path,
                         help="Path to profile folder (default: {0})".format(profile_path))
-    parser.add_argument("-v", "--verbose", action="store_true", default=False,
-                        help="Enable debugging/verbose output")
+    parser.add_argument("-v", "--verbose", action="count", default=0,
+                        help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
 
     args = parser.parse_args()
-
-    if args.verbose:
-        global VERBOSE
-        VERBOSE = True
 
     return args
 
@@ -283,38 +299,65 @@ def load_libnss():
         nssname = "nss3.dll"
         firefox = r"c:\Program Files (x86)\Mozilla Firefox"
         os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
+        LOG.debug("PATH is now %s", os.environ["PATH"])
 
     else:
         nssname = "libnss3.so"
 
     try:
+        nsslib = os.path.join(firefox, nssname)
+        LOG.debug("Loading NSS library from %s", nsslib)
+
         global NSS
-        NSS = CDLL(os.path.join(firefox, nssname))
+        NSS = CDLL(nsslib)
 
     except Exception as e:
-        err.write("Problems opening '{0}' required for password "
-                  "decryption\n".format(nssname))
-        err.write("Error was {0}\n".format(e))
+        LOG.error("Problems opening '%s' required for password decryption", nssname)
+        LOG.error("Error was %s", e)
         raise Exit(3)
 
 
 def read_profiles(basepath):
     profileini = os.path.join(basepath, "profiles.ini")
 
+    LOG.debug("Reading profiles from %s", profileini)
+
     if not os.path.isfile(profileini):
-        err.write("ERROR: profile.ini not found in {0}, "
-                  "please provide the correct path\n".format(basepath))
+        LOG.error("profile.ini not found in %s, please provide the correct path", basepath)
         raise Exit(2)
 
     # Read profiles from Firefox profile folder
     profiles = ConfigParser()
     profiles.read(profileini)
 
+    LOG.debug("Read profiles %s", profiles.sections())
+
     return profiles
+
+
+def setup_logging(args):
+    if args.verbose == 1:
+        level = logging.INFO
+    elif args.verbose >= 2:
+        level = logging.DEBUG
+    else:
+        level = logging.WARN
+
+    logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=level,
+    )
+
+    global LOG
+    LOG = logging.getLogger(__name__)
 
 
 def main():
     args = parse_sys_args()
+
+    setup_logging(args)
+
+    LOG.debug("Parsed commandline arguments: %s", args)
 
     load_libnss()
 
