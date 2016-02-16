@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # This program is free software: you can redistribute it and/or modify
@@ -135,13 +135,13 @@ def decrypt_passwords(profile, password):
     stored passwords.
     """
 
-    if NSS.NSS_Init(profile) != 0:
+    if NSS.NSS_Init(profile.encode("utf8")) != 0:
         err.write("ERROR - Couldn't initialize NSS\n")
         handle_error()
         raise Exit(5)
 
     if password:
-        password = c_char_p(password)
+        password = c_char_p(password.encode("utf8"))
         keyslot = NSS.PK11_GetInternalKeySlot()
         if keyslot is None:
             err.write("ERROR - Failed to retrieve internal KeySlot\n")
@@ -193,15 +193,16 @@ def decrypt_passwords(profile, password):
                 handle_error()
                 raise Exit(9)
 
-            out.write("Website:   {0}\n".format(host.encode("utf-8")))
-            out.write("Username: '{0}'\n".format(string_at(outuser.data,
-                                                           outuser.len)))
-            out.write("Password: '{0}'\n\n".format(string_at(outpass.data,
-                                                             outpass.len)))
-        else:
-            out.write("Website:   {0}\n".format(host.encode("utf-8")))
-            out.write("Username: '{0}'\n".format(user))
-            out.write("Password: '{0}'\n\n".format(passw))
+            user = string_at(outuser.data, outuser.len)
+            passw = string_at(outpass.data, outpass.len)
+
+        if sys.version_info[0] > 2:
+            user = user.decode("utf8")
+            passw = passw.decode("utf8")
+
+        out.write("Website:   {0}\n".format(host))
+        out.write("Username: '{0}'\n".format(user))
+        out.write("Password: '{0}'\n\n".format(passw))
 
     credentials.done()
     NSS.NSS_Shutdown()
@@ -245,13 +246,14 @@ def ask_password(profile):
     if sys.stdin.isatty():
         passwd = getpass(passmsg)
 
-        if input_encoding != utf8:
-            passwd = passwd.decode(input_encoding).encode(utf8)
-
-        return passwd
     else:
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
-        return sys.stdin.readline().rstrip("\n")
+        passwd = sys.stdin.readline().rstrip("\n")
+
+    if sys.version_info[0] > 2:
+        return passwd
+    else:
+        return passwd.decode(input_encoding)
 
 
 def parse_sys_args():
