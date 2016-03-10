@@ -17,16 +17,13 @@
 # Disclamer: Parts of this script were taken from the great tool:
 # dumpzilla at www.dumpzilla.org
 
-import sys
-from sys import stdout as out
-from sys import stderr as err
+import argparse
+import json
+import logging
 import os
 import sqlite3
-import json
-import argparse
-import logging
+import sys
 from base64 import b64decode
-from os import path
 from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
 from ctypes import Structure, CDLL
 from getpass import getpass
@@ -65,7 +62,7 @@ class Credentials(object):
         self.db = db
 
         LOG.debug("Database location: %s", self.db)
-        if not path.isfile(db):
+        if not os.path.isfile(db):
             raise NotFoundError("ERROR - {0} database not found\n".format(db))
 
         LOG.info("Using %s for credentials.", db)
@@ -234,9 +231,9 @@ def decrypt_passwords(profile, password):
             user = user.decode("utf8")
             passw = passw.decode("utf8")
 
-        out.write("Website:   {0}\n".format(host))
-        out.write("Username: '{0}'\n".format(user))
-        out.write("Password: '{0}'\n\n".format(passw))
+        sys.stdout.write("Website:   {0}\n".format(host))
+        sys.stdout.write("Username: '{0}'\n".format(user))
+        sys.stdout.write("Password: '{0}'\n\n".format(passw))
 
     credentials.done()
     NSS.NSS_Shutdown()
@@ -260,10 +257,10 @@ def ask_section(profiles):
 
     choice = None
     while choice not in sections:
-        err.write("Select the Firefox profile you wish to decrypt\n")
+        sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
         for i in sorted(sections):
-            err.write("{0} -> {1}\n".format(i, sections[i]))
-        err.flush()
+            sys.stderr.write("{0} -> {1}\n".format(i, sections[i]))
+        sys.stderr.flush()
         choice = raw_input("Choice: ")
 
     final_choice = sections[choice]
@@ -378,7 +375,7 @@ def main():
 
     load_libnss()
 
-    basepath = path.expanduser(args.profile)
+    basepath = os.path.expanduser(args.profile)
 
     # Read profiles from profiles.ini in profile folder
     profiles = read_profiles(basepath)
