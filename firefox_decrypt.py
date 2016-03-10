@@ -27,6 +27,8 @@ from base64 import b64decode
 from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
 from ctypes import Structure, CDLL
 from getpass import getpass
+from subprocess import Popen, PIPE
+from urlparse import urlparse
 LOG = None
 
 try:
@@ -137,6 +139,38 @@ def handle_error():
     LOG.debug("%s: %s", error_name, error_str)
 
 
+def test_password_store(export):
+    """Check if pass from passwordstore.org is installed
+    If it is installed but not initialized, initialize it
+    """
+    # Nothing to do here if exporting wasn't requested
+    if not export:
+        return
+
+    LOG.debug("Testing if password store is installed and configured")
+
+    try:
+        p = Popen(["pass", "version"], stdout=PIPE, stderr=PIPE)
+    except OSError as e:
+        if e.errno == 2:
+            LOG.error("Password store is not installed and exporting was requested")
+            raise Exit(10)
+        else:
+            LOG.error("Unknown error happened.")
+            LOG.error("Error was %s", e)
+            raise Exit(200)
+
+    out, err = p.communicate()
+
+    if p.returncode != 0:
+        if 'Try "pass init"' in err:
+            LOG.error("Password store was not initialized.")
+            LOG.error("Initialize the password store manually by using 'pass init'")
+            raise Exit(1)
+        else:
+            LOG.error("Unknown error happened when running 'pass'.")
+            LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
+            raise Exit(200)
 
 
 def initialize_NSS(profile, password):
@@ -243,9 +277,24 @@ def decrypt_passwords(profile, password, export):
             user = user.decode("utf8")
             passw = passw.decode("utf8")
 
-        sys.stdout.write("Website:   {0}\n".format(host))
-        sys.stdout.write("Username: '{0}'\n".format(user))
-        sys.stdout.write("Password: '{0}'\n\n".format(passw))
+        if export:
+            address = urlparse(host)
+            passname = "web/{0}/{1}".format(address.netloc, user)
+            data = "{0}\n".format(passwd)
+
+            LOG.debug("Inserting pass '%s' '%s'", passname, data)
+
+            p = Popen(["pass", "insert", passname], stdout=PIPE, stderr=PIPE)
+            out, err = p.communicate(data)
+
+            if p.returncode != 0:
+                LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
+                raise Exit(13)
+
+        else:
+            sys.stdout.write("Website:   {0}\n".format(host))
+            sys.stdout.write("Username: '{0}'\n".format(user))
+            sys.stdout.write("Password: '{0}'\n\n".format(passw))
 
     credentials.done()
     NSS.NSS_Shutdown()
@@ -310,6 +359,8 @@ def parse_sys_args():
     )
     parser.add_argument("profile", nargs='?', default=profile_path,
                         help="Path to profile folder (default: {0})".format(profile_path))
+    parser.add_argument("-e", "--export-pass", action="store_true",
+                        help="Export URL, username and password to pass from passwordstore.org")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
 
@@ -385,6 +436,9 @@ def main():
 
     LOG.debug("Parsed commandline arguments: %s", args)
 
+    # Check whether pass from passwordstore.org is installed
+    test_password_store(args.export_pass)
+
     load_libnss()
 
     basepath = os.path.expanduser(args.profile)
@@ -400,7 +454,7 @@ def main():
     password = ask_password(profile)
 
     # And finally decode all passwords
-    decrypt_passwords(profile, password)
+    decrypt_passwords(profile, password, args.export_pass)
 
 
 if __name__ == "__main__":
