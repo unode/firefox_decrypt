@@ -137,12 +137,9 @@ def handle_error():
     LOG.debug("%s: %s", error_name, error_str)
 
 
-def decrypt_passwords(profile, password):
-    """
-    Decrypt requested profile using the provided password and print out all
-    stored passwords.
-    """
 
+
+def initialize_NSS(profile, password):
     LOG.debug("Initializing NSS with profile path '%s'", profile)
 
     i = NSS.NSS_Init(profile.encode("utf8"))
@@ -176,14 +173,8 @@ def decrypt_passwords(profile, password):
     else:
         LOG.warn("Attempting decryption with no Master Password")
 
-    username = Item()
-    passwd = Item()
-    outuser = Item()
-    outpass = Item()
 
-    # Any password in this profile store at all?
-    got_password = False
-
+def obtain_credentials(profile):
     try:
         credentials = JsonCredentials(profile)
     except NotFoundError:
@@ -192,6 +183,27 @@ def decrypt_passwords(profile, password):
         except NotFoundError:
             LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
             raise Exit(4)
+
+    return credentials
+
+
+def decrypt_passwords(profile, password, export):
+    """
+    Decrypt requested profile using the provided password and print out all
+    stored passwords.
+    """
+
+    initialize_NSS(profile, password)
+
+    username = Item()
+    passwd = Item()
+    outuser = Item()
+    outpass = Item()
+
+    # Any password in this profile store at all?
+    got_password = False
+
+    credentials = obtain_credentials(profile)
 
     for host, user, passw, enctype in credentials:
         got_password = True
