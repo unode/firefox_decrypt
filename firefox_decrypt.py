@@ -86,6 +86,9 @@ class Credentials(object):
         pass
 
     def done(self):
+        """Override this method if the credentials subclass needs to do any
+        action after interaction
+        """
         pass
 
 
@@ -109,6 +112,8 @@ class SqliteCredentials(Credentials):
             yield i
 
     def done(self):
+        """Close the sqlite cursor and database connection
+        """
         super(SqliteCredentials, self).done()
 
         self.c.close()
@@ -143,7 +148,8 @@ class NSSInteraction(object):
     Interact with lib NSS
     """
     def __init__(self):
-        self.NSS = self.load_libnss()
+        self.NSS = None
+        self.load_libnss()
 
     def load_libnss(self):
         """Load libnss into python using the CDLL interface
@@ -163,7 +169,7 @@ class NSSInteraction(object):
             nsslib = os.path.join(firefox, nssname)
             LOG.debug("Loading NSS library from %s", nsslib)
 
-            return CDLL(nsslib)
+            self.NSS = CDLL(nsslib)
 
         except Exception as e:
             LOG.error("Problems opening '%s' required for password decryption", nssname)
