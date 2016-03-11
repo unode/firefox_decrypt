@@ -49,10 +49,14 @@ VERBOSE = False
 
 
 class NotFoundError(Exception):
+    """Exception to handle situations where a credentials file is not found
+    """
     pass
 
 
 class Exit(Exception):
+    """Exception to allow a clean exit from any point in execution
+    """
     def __init__(self, exitcode):
         self.exitcode = exitcode
 
@@ -61,10 +65,14 @@ class Exit(Exception):
 
 
 class Item(Structure):
+    """struct needed to interact with libnss
+    """
     _fields_ = [('type', c_uint), ('data', c_void_p), ('len', c_uint)]
 
 
 class Credentials(object):
+    """Base credentials backend manager
+    """
     def __init__(self, db):
         self.db = db
 
@@ -82,6 +90,8 @@ class Credentials(object):
 
 
 class SqliteCredentials(Credentials):
+    """SQLite credentials backend manager
+    """
     def __init__(self, profile):
         db = profile + "/signons.sqlite"
 
@@ -106,6 +116,8 @@ class SqliteCredentials(Credentials):
 
 
 class JsonCredentials(Credentials):
+    """JSON credentials backend manager
+    """
     def __init__(self, profile):
         db = profile + "/logins.json"
 
@@ -127,10 +139,15 @@ class JsonCredentials(Credentials):
 
 
 class NSSInteraction(object):
+    """
+    Interact with lib NSS
+    """
     def __init__(self):
         self.NSS = self.load_libnss()
 
     def load_libnss(self):
+        """Load libnss into python using the CDLL interface
+        """
         firefox = ""
 
         if os.name == "nt":
@@ -397,6 +414,8 @@ def ask_password(profile):
 
 
 def parse_sys_args():
+    """Parse command line arguments
+    """
     profile_path = "~/.mozilla/firefox/"
 
     parser = argparse.ArgumentParser(
@@ -415,6 +434,8 @@ def parse_sys_args():
 
 
 def read_profiles(basepath):
+    """Parse Firefox profiles in provided location
+    """
     profileini = os.path.join(basepath, "profiles.ini")
 
     LOG.debug("Reading profiles from %s", profileini)
@@ -433,6 +454,8 @@ def read_profiles(basepath):
 
 
 def setup_logging(args):
+    """Setup the logging level and configure the basic logger
+    """
     if args.verbose == 1:
         level = logging.INFO
     elif args.verbose >= 2:
@@ -450,6 +473,8 @@ def setup_logging(args):
 
 
 def main():
+    """Main entry point
+    """
     args = parse_sys_args()
 
     setup_logging(args)
