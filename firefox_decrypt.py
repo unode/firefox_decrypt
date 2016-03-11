@@ -46,7 +46,6 @@ except ImportError:
 
 LOG = None
 VERBOSE = False
-NSS = None
 
 
 class NotFoundError(Exception):
@@ -127,22 +126,177 @@ class JsonCredentials(Credentials):
                        i["encryptedPassword"], i["encType"])
 
 
-def handle_error():
-    """If an error happens in libnss, handle it and print some debug information
-    """
-    LOG.debug("Error during a call to NSS library, trying to obtain error info")
+class NSSInteraction(object):
+    def __init__(self):
+        self.NSS = self.load_libnss()
 
-    error = NSS.PORT_GetError()
-    NSS.PR_ErrorToString.restype = c_char_p
-    NSS.PR_ErrorToName.restype = c_char_p
-    error_str = NSS.PR_ErrorToString(error)
-    error_name = NSS.PR_ErrorToName(error)
+    def load_libnss(self):
+        firefox = ""
 
-    if sys.version_info[0] > 2:
-        error_name = error_name.decode("utf8")
-        error_str = error_str.decode("utf8")
+        if os.name == "nt":
+            nssname = "nss3.dll"
+            firefox = r"c:\Program Files (x86)\Mozilla Firefox"
+            os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
+            LOG.debug("PATH is now %s", os.environ["PATH"])
 
-    LOG.debug("%s: %s", error_name, error_str)
+        else:
+            nssname = "libnss3.so"
+
+        try:
+            nsslib = os.path.join(firefox, nssname)
+            LOG.debug("Loading NSS library from %s", nsslib)
+
+            return CDLL(nsslib)
+
+        except Exception as e:
+            LOG.error("Problems opening '%s' required for password decryption", nssname)
+            LOG.error("Error was %s", e)
+            raise Exit(3)
+
+    def handle_error(self):
+        """If an error happens in libnss, handle it and print some debug information
+        """
+        LOG.debug("Error during a call to NSS library, trying to obtain error info")
+
+        error = self.NSS.PORT_GetError()
+        self.NSS.PR_ErrorToString.restype = c_char_p
+        self.NSS.PR_ErrorToName.restype = c_char_p
+        error_str = self.NSS.PR_ErrorToString(error)
+        error_name = self.NSS.PR_ErrorToName(error)
+
+        if sys.version_info[0] > 2:
+            error_name = error_name.decode("utf8")
+            error_str = error_str.decode("utf8")
+
+        LOG.debug("%s: %s", error_name, error_str)
+
+    def initialize_libnss(self, profile, password):
+        """Initialize the NSS library by authenticating with the user supplied password
+        """
+        LOG.debug("Initializing NSS with profile path '%s'", profile)
+
+        i = self.NSS.NSS_Init(profile.encode("utf8"))
+        LOG.debug("Initializing NSS returned %s", i)
+
+        if i != 0:
+            LOG.error("Couldn't initialize NSS")
+            self.handle_error()
+            raise Exit(5)
+
+        if password:
+            LOG.debug("Retrieving internal key slot")
+            p_password = c_char_p(password.encode("utf8"))
+            keyslot = self.NSS.PK11_GetInternalKeySlot()
+            LOG.debug("Internal key slot %s", keyslot)
+
+            if keyslot is None:
+                LOG.error("Failed to retrieve internal KeySlot")
+                self.handle_error()
+                raise Exit(6)
+
+            LOG.debug("Authenticating with password '%s'", password)
+
+            i = self.NSS.PK11_CheckUserPassword(keyslot, p_password)
+            LOG.debug("Checking user password returned %s", i)
+
+            if i != 0:
+                LOG.error("Master password is not correct")
+                self.handle_error()
+                raise Exit(7)
+        else:
+            LOG.warn("Attempting decryption with no Master Password")
+
+    def decrypt_passwords(self, profile, password, export):
+        """
+        Decrypt requested profile using the provided password and print out all
+        stored passwords.
+        """
+
+        self.initialize_libnss(profile, password)
+
+        username = Item()
+        passwd = Item()
+        outuser = Item()
+        outpass = Item()
+
+        # Any password in this profile store at all?
+        got_password = False
+
+        credentials = obtain_credentials(profile)
+
+        for host, user, passw, enctype in credentials:
+            got_password = True
+
+            if enctype:
+                username.data = cast(c_char_p(b64decode(user)), c_void_p)
+                username.len = len(b64decode(user))
+                passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
+                passwd.len = len(b64decode(passw))
+
+                LOG.debug("Decrypting username data '%s'", user)
+
+                i = self.NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None)
+                LOG.debug("Decryption of username returned %s", i)
+
+                if i == -1:
+                    LOG.error("Passwords protected by a Master Password!")
+                    self.handle_error()
+                    raise Exit(8)
+
+                LOG.debug("Decrypting password data '%s'", passw)
+
+                i = self.NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
+                LOG.debug("Decryption of password returned %s", i)
+
+                if i == -1:
+                    # This shouldn't really happen but failsafe just in case
+                    LOG.error("Given Master Password is not correct!")
+                    self.handle_error()
+                    raise Exit(9)
+
+                user = string_at(outuser.data, outuser.len)
+                passw = string_at(outpass.data, outpass.len)
+
+            user = user.decode("utf8")
+            passw = passw.decode("utf8")
+
+            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, host)
+            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", type(user), type(passw), type(host))
+
+            if export:
+                address = urlparse(host)
+                passname = u"web/{0}/{1}".format(address.netloc, user)
+                data = u"{0}".format(passw)
+
+                LOG.debug("Inserting pass '%s' '%s'", passname, data)
+
+                # NOTE --force is used. Existing passwords will be overwritten
+                # NOTE --echo is used so that only one line is read from user input
+                cmd = ["pass", "insert", "--force", "--echo", passname]
+
+                # password twice because pass asks for confirmation
+                LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
+
+                p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+                out, err = p.communicate(data.encode("utf8"))
+
+                if p.returncode != 0:
+                    LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
+                    LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
+                    raise Exit(13)
+
+                LOG.debug("Successfully exported '%s'", passname)
+
+            else:
+                sys.stdout.write(u"Website:   {0}\n".format(host))
+                sys.stdout.write(u"Username: '{0}'\n".format(user))
+                sys.stdout.write(u"Password: '{0}'\n\n".format(passw))
+
+        credentials.done()
+        self.NSS.NSS_Shutdown()
+
+        if not got_password:
+            LOG.warn("No passwords found in selected profile")
 
 
 def test_password_store(export):
@@ -179,42 +333,9 @@ def test_password_store(export):
             raise Exit(200)
 
 
-def initialize_NSS(profile, password):
-    LOG.debug("Initializing NSS with profile path '%s'", profile)
-
-    i = NSS.NSS_Init(profile.encode("utf8"))
-    LOG.debug("Initializing NSS returned %s", i)
-
-    if i != 0:
-        LOG.error("Couldn't initialize NSS")
-        handle_error()
-        raise Exit(5)
-
-    if password:
-        LOG.debug("Retrieving internal key slot")
-        p_password = c_char_p(password.encode("utf8"))
-        keyslot = NSS.PK11_GetInternalKeySlot()
-        LOG.debug("Internal key slot %s", keyslot)
-
-        if keyslot is None:
-            LOG.error("Failed to retrieve internal KeySlot")
-            handle_error()
-            raise Exit(6)
-
-        LOG.debug("Authenticating with password '%s'", password)
-
-        i = NSS.PK11_CheckUserPassword(keyslot, p_password)
-        LOG.debug("Checking user password returned %s", i)
-
-        if i != 0:
-            LOG.error("Master password is not correct")
-            handle_error()
-            raise Exit(7)
-    else:
-        LOG.warn("Attempting decryption with no Master Password")
-
-
 def obtain_credentials(profile):
+    """Figure out which of the 2 possible backend credential engines is available
+    """
     try:
         credentials = JsonCredentials(profile)
     except NotFoundError:
@@ -225,88 +346,6 @@ def obtain_credentials(profile):
             raise Exit(4)
 
     return credentials
-
-
-def decrypt_passwords(profile, password, export):
-    """
-    Decrypt requested profile using the provided password and print out all
-    stored passwords.
-    """
-
-    initialize_NSS(profile, password)
-
-    username = Item()
-    passwd = Item()
-    outuser = Item()
-    outpass = Item()
-
-    # Any password in this profile store at all?
-    got_password = False
-
-    credentials = obtain_credentials(profile)
-
-    for host, user, passw, enctype in credentials:
-        got_password = True
-
-        if enctype:
-            username.data = cast(c_char_p(b64decode(user)), c_void_p)
-            username.len = len(b64decode(user))
-            passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
-            passwd.len = len(b64decode(passw))
-
-            LOG.debug("Decrypting username data '%s'", user)
-
-            i = NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None)
-            LOG.debug("Decryption of username returned %s", i)
-
-            if i == -1:
-                LOG.error("Passwords protected by a Master Password!")
-                handle_error()
-                raise Exit(8)
-
-            LOG.debug("Decrypting password data '%s'", passw)
-
-            i = NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
-            LOG.debug("Decryption of password returned %s", i)
-
-            if i == -1:
-                # This shouldn't really happen but failsafe just in case
-                LOG.error("Given Master Password is not correct!")
-                handle_error()
-                raise Exit(9)
-
-            user = string_at(outuser.data, outuser.len)
-            passw = string_at(outpass.data, outpass.len)
-
-        if sys.version_info[0] > 2:
-            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, host)
-            user = user.decode("utf8")
-            passw = passw.decode("utf8")
-
-        if export:
-            address = urlparse(host)
-            passname = "web/{0}/{1}".format(address.netloc, user)
-            data = "{0}\n".format(passwd)
-
-            LOG.debug("Inserting pass '%s' '%s'", passname, data)
-
-            p = Popen(["pass", "insert", passname], stdout=PIPE, stderr=PIPE)
-            out, err = p.communicate(data)
-
-            if p.returncode != 0:
-                LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-                raise Exit(13)
-
-        else:
-            sys.stdout.write("Website:   {0}\n".format(host))
-            sys.stdout.write("Username: '{0}'\n".format(user))
-            sys.stdout.write("Password: '{0}'\n\n".format(passw))
-
-    credentials.done()
-    NSS.NSS_Shutdown()
-
-    if not got_password:
-        LOG.warn("No passwords found in selected profile")
 
 
 def ask_section(profiles):
@@ -375,31 +414,6 @@ def parse_sys_args():
     return args
 
 
-def load_libnss():
-    firefox = ""
-
-    if os.name == "nt":
-        nssname = "nss3.dll"
-        firefox = r"c:\Program Files (x86)\Mozilla Firefox"
-        os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
-        LOG.debug("PATH is now %s", os.environ["PATH"])
-
-    else:
-        nssname = "libnss3.so"
-
-    try:
-        nsslib = os.path.join(firefox, nssname)
-        LOG.debug("Loading NSS library from %s", nsslib)
-
-        global NSS
-        NSS = CDLL(nsslib)
-
-    except Exception as e:
-        LOG.error("Problems opening '%s' required for password decryption", nssname)
-        LOG.error("Error was %s", e)
-        raise Exit(3)
-
-
 def read_profiles(basepath):
     profileini = os.path.join(basepath, "profiles.ini")
 
@@ -445,7 +459,7 @@ def main():
     # Check whether pass from passwordstore.org is installed
     test_password_store(args.export_pass)
 
-    load_libnss()
+    nss = NSSInteraction()
 
     basepath = os.path.expanduser(args.profile)
 
@@ -460,7 +474,7 @@ def main():
     password = ask_password(profile)
 
     # And finally decode all passwords
-    decrypt_passwords(profile, password, args.export_pass)
+    nss.decrypt_passwords(profile, password, args.export_pass)
 
 
 if __name__ == "__main__":
