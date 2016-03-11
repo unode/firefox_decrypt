@@ -28,8 +28,13 @@ from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
 from ctypes import Structure, CDLL
 from getpass import getpass
 from subprocess import Popen, PIPE
-from urlparse import urlparse
-LOG = None
+
+try:
+    # Python 3
+    from urllib.parse import urlparse
+except ImportError:
+    # Python 2
+    from urlparse import urlparse
 
 try:
     # Python 3
@@ -39,6 +44,7 @@ except ImportError:
     # Python 2
     from ConfigParser import ConfigParser
 
+LOG = None
 VERBOSE = False
 NSS = None
 
