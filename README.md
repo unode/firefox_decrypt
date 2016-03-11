@@ -47,6 +47,9 @@ where keyword is part of the expected output (URL, username, email, password ...
 
 #### Changelog
 
+##### 0.4
+- Add option to export passwords to *pass* from http://passwordstore.org
+
 ##### 0.3
 - Polyglot Python 2 and 3. Python 3 now supported.
 - Improved debugging information with -v or -vv
