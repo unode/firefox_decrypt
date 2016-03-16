@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This program is free software: you can redistribute it and/or modify
@@ -433,6 +433,8 @@ def parse_sys_args():
                         help="Export URL, username and password to pass from passwordstore.org")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
+    parser.add_argument("-s", "--single",
+                        help="Load single profile from specified folder. (At least keyX.db, certX.db and logins.json)")
 
     args = parser.parse_args()
 
@@ -492,16 +494,20 @@ def main():
 
     nss = NSSInteraction()
 
-    basepath = os.path.expanduser(args.profile)
+    if args.single != None:
+        profile=args.single
+    else:
+        basepath = os.path.expanduser(args.profile)
 
-    # Read profiles from profiles.ini in profile folder
-    profiles = read_profiles(basepath)
+        # Read profiles from profiles.ini in profile folder
+        profiles = read_profiles(basepath)
 
-    # Ask user which profile want's to open
-    section = ask_section(profiles)
+        # Ask user which profile want's to open
+        section = ask_section(profiles)
 
-    # Prompt for Master Password
-    profile = os.path.join(basepath, section)
+        # Prompt for Master Password
+        profile = os.path.join(basepath, section)
+
     password = ask_password(profile)
 
     # And finally decode all passwords
