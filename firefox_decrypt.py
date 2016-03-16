@@ -494,8 +494,10 @@ def main():
 
     nss = NSSInteraction()
 
+    # Use the given folder as profile
     if args.single != None:
         profile=args.single
+    # Ask user which profile he want to use.
     else:
         basepath = os.path.expanduser(args.profile)
 
@@ -505,9 +507,9 @@ def main():
         # Ask user which profile want's to open
         section = ask_section(profiles)
 
-        # Prompt for Master Password
         profile = os.path.join(basepath, section)
 
+    # Prompt for Master Password
     password = ask_password(profile)
 
     # And finally decode all passwords
