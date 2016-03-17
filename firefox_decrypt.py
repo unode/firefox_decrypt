@@ -380,17 +380,23 @@ def ask_section(profiles):
     for section in profiles.sections():
         if section.startswith("Profile"):
             sections[str(i)] = profiles.get(section, "Path")
+            i += 1
         else:
             continue
-        i += 1
 
-    choice = None
-    while choice not in sections:
-        sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
-        for i in sorted(sections):
-            sys.stderr.write("{0} -> {1}\n".format(i, sections[i]))
-        sys.stderr.flush()
-        choice = raw_input("Choice: ")
+    # If only one menu entry exists, use it without prompting
+    if i == 2:
+        choice = "1"
+
+    else:
+        choice = None
+        while choice not in sections:
+            sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
+            for i in sorted(sections):
+                sys.stderr.write("{0} -> {1}\n".format(i, sections[i]))
+            sys.stderr.flush()
+
+            choice = raw_input("Choice: ")
 
     final_choice = sections[choice]
     LOG.debug("Profile selection matched %s", final_choice)
