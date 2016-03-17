@@ -44,6 +44,17 @@ python firefox_decrypt.py | grep -C2 keyword
 ```
 where keyword is part of the expected output (URL, username, email, password ...)
 
+Since version **0.4** it is now also possible to export stored passwords to
+*pass* from http://passwordstore.org . To do so use:
+
+```
+python firefox_decrypt.py --export-pass
+```
+and **all** existing passwords will be exported after the pattern
+`web/<address>[:<port>]/<login>`.
+
+There is currently no way of selectively exporting passwords.
+
 
 #### Changelog
 
