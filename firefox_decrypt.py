@@ -431,7 +431,7 @@ def parse_sys_args():
     profile_path = "~/.mozilla/firefox/"
 
     parser = argparse.ArgumentParser(
-        description="Access Firefox profiles and decrypt existing passwords"
+        description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
     )
     parser.add_argument("profile", nargs='?', default=profile_path,
                         help="Path to profile folder (default: {0})".format(profile_path))

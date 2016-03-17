@@ -1,6 +1,7 @@
 #### About
 
-Firefox Decrypt is a tool to extract passwords from Firefox profiles.
+Firefox Decrypt is a tool to extract passwords from Firefox/Thunderbird
+profiles.
 
 It can be used to recover passwords from a profile protected by a Master
 Password as long as the latter is known.
@@ -31,7 +32,8 @@ python firefox_decrypt.py
 and it will prompt for which profile to use and the master password of that
 profile.
 
-If you don't keep your Firefox profiles on a standard folder you can call the script with:
+If you don't keep your Firefox profiles on a standard folder you can call the
+script with:
 
 ```
 python firefox_decrypt.py /folder/containing/profiles.ini/
