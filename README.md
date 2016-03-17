@@ -60,6 +60,10 @@ There is currently no way of selectively exporting passwords.
 
 #### Changelog
 
+##### 0.4.1
+- If only a single profile is found do not prompt user for profile
+- Document that the tool also works for Thunderbird profiles
+
 ##### 0.4
 - Add option to export passwords to *pass* from http://passwordstore.org
 
