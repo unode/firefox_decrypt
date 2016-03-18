@@ -57,6 +57,24 @@ class NotFoundError(Exception):
 class Exit(Exception):
     """Exception to allow a clean exit from any point in execution
     """
+    ERROR = 1
+    MISSING_PROFILEINI = 2
+    MISSING_SECRETS = 3
+    BAD_PROFILEINI = 4
+
+    FAIL_LOAD_NSS = 11
+    FAIL_INIT_NSS = 12
+    FAIL_NSS_KEYSLOT = 13
+    BAD_MASTER_PASSWORD = 15
+    NEED_MASTER_PASSWORD = 16
+
+    PASSSTORE_NOT_INIT = 20
+    PASSSTORE_MISSING = 21
+    PASSSTORE_ERROR = 22
+
+    UNKNOWN_ERROR = 100
+    UNEXPECTED_END = 101
+
     def __init__(self, exitcode):
         self.exitcode = exitcode
 
@@ -174,7 +192,7 @@ class NSSInteraction(object):
         except Exception as e:
             LOG.error("Problems opening '%s' required for password decryption", nssname)
             LOG.error("Error was %s", e)
-            raise Exit(3)
+            raise Exit(Exit.FAIL_LOAD_NSS)
 
     def handle_error(self):
         """If an error happens in libnss, handle it and print some debug information
@@ -204,7 +222,7 @@ class NSSInteraction(object):
         if i != 0:
             LOG.error("Couldn't initialize NSS")
             self.handle_error()
-            raise Exit(5)
+            raise Exit(Exit.FAIL_INIT_NSS)
 
         if password:
             LOG.debug("Retrieving internal key slot")
@@ -215,7 +233,7 @@ class NSSInteraction(object):
             if keyslot is None:
                 LOG.error("Failed to retrieve internal KeySlot")
                 self.handle_error()
-                raise Exit(6)
+                raise Exit(Exit.FAIL_NSS_KEYSLOT)
 
             LOG.debug("Authenticating with password '%s'", password)
 
@@ -225,7 +243,7 @@ class NSSInteraction(object):
             if i != 0:
                 LOG.error("Master password is not correct")
                 self.handle_error()
-                raise Exit(7)
+                raise Exit(Exit.BAD_MASTER_PASSWORD)
         else:
             LOG.warn("Attempting decryption with no Master Password")
 
@@ -264,7 +282,7 @@ class NSSInteraction(object):
                 if i == -1:
                     LOG.error("Passwords protected by a Master Password!")
                     self.handle_error()
-                    raise Exit(8)
+                    raise Exit(Exit.NEED_MASTER_PASSWORD)
 
                 LOG.debug("Decrypting password data '%s'", passw)
 
@@ -275,7 +293,7 @@ class NSSInteraction(object):
                     # This shouldn't really happen but failsafe just in case
                     LOG.error("Given Master Password is not correct!")
                     self.handle_error()
-                    raise Exit(9)
+                    raise Exit(Exit.UNEXPECTED_END)
 
                 user = string_at(outuser.data, outuser.len)
                 passw = string_at(outpass.data, outpass.len)
@@ -306,7 +324,7 @@ class NSSInteraction(object):
                 if p.returncode != 0:
                     LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
                     LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-                    raise Exit(13)
+                    raise Exit(Exit.PASSSTORE_ERROR)
 
                 LOG.debug("Successfully exported '%s'", passname)
 
@@ -337,11 +355,11 @@ def test_password_store(export):
     except OSError as e:
         if e.errno == 2:
             LOG.error("Password store is not installed and exporting was requested")
-            raise Exit(10)
+            raise Exit(Exit.PASSSTORE_MISSING)
         else:
             LOG.error("Unknown error happened.")
             LOG.error("Error was %s", e)
-            raise Exit(200)
+            raise Exit(Exit.UNKNOWN_ERROR)
 
     out, err = p.communicate()
 
@@ -349,11 +367,11 @@ def test_password_store(export):
         if 'Try "pass init"' in err:
             LOG.error("Password store was not initialized.")
             LOG.error("Initialize the password store manually by using 'pass init'")
-            raise Exit(1)
+            raise Exit(Exit.PASSSTORE_NOT_INIT)
         else:
             LOG.error("Unknown error happened when running 'pass'.")
             LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-            raise Exit(200)
+            raise Exit(Exit.UNKNOWN_ERROR)
 
 
 def obtain_credentials(profile):
@@ -366,7 +384,7 @@ def obtain_credentials(profile):
             credentials = SqliteCredentials(profile)
         except NotFoundError:
             LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
-            raise Exit(4)
+            raise Exit(Exit.MISSING_SECRETS)
 
     return credentials
 
