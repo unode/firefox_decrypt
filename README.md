@@ -60,6 +60,9 @@ There is currently no way of selectively exporting passwords.
 
 #### Changelog
 
+##### 0.4.2
+- If profile_path provided doesn't contain profiles.ini assume it is an actual profile
+
 ##### 0.4.1
 - If only a single profile is found do not prompt user for profile
 - Document that the tool also works for Thunderbird profiles
