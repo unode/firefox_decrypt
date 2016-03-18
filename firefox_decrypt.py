@@ -443,6 +443,54 @@ def ask_password(profile):
         return passwd.decode(input_encoding)
 
 
+def read_profiles(basepath):
+    """Parse Firefox profiles in provided location
+    """
+    profileini = os.path.join(basepath, "profiles.ini")
+
+    LOG.debug("Reading profiles from %s", profileini)
+
+    if not os.path.isfile(profileini):
+        LOG.warn("profile.ini not found in %s", basepath)
+        raise Exit(Exit.MISSING_PROFILEINI)
+
+    # Read profiles from Firefox profile folder
+    profiles = ConfigParser()
+    profiles.read(profileini)
+
+    LOG.debug("Read profiles %s", profiles.sections())
+
+    return profiles
+
+
+def get_profile(basepath):
+    """Select profile to use by either reading profiles.ini or assuming given
+    path is already a profile
+    """
+    try:
+        profiles = read_profiles(basepath)
+    except Exit as e:
+        if e.exitcode == Exit.MISSING_PROFILEINI:
+            LOG.warn("Continuing and assuming '%s' is a profile location", basepath)
+            profile = basepath
+
+            if not os.path.isdir(profile):
+                LOG.error("Profile location '%s' is not a directory", profile)
+                raise
+        else:
+            raise
+    else:
+        # Ask user which profile to open
+        section = ask_section(profiles)
+        profile = os.path.join(basepath, section)
+
+        if not os.path.isdir(profile):
+            LOG.error("Profile location '%s' is not a directory. Has profiles.ini been tampered with?", profile)
+            raise Exit(Exit.BAD_PROFILEINI)
+
+    return profile
+
+
 def parse_sys_args():
     """Parse command line arguments
     """
@@ -461,26 +509,6 @@ def parse_sys_args():
     args = parser.parse_args()
 
     return args
-
-
-def read_profiles(basepath):
-    """Parse Firefox profiles in provided location
-    """
-    profileini = os.path.join(basepath, "profiles.ini")
-
-    LOG.debug("Reading profiles from %s", profileini)
-
-    if not os.path.isfile(profileini):
-        LOG.error("profile.ini not found in %s, please provide the correct path", basepath)
-        raise Exit(2)
-
-    # Read profiles from Firefox profile folder
-    profiles = ConfigParser()
-    profiles.read(profileini)
-
-    LOG.debug("Read profiles %s", profiles.sections())
-
-    return profiles
 
 
 def setup_logging(args):
@@ -519,13 +547,9 @@ def main():
     basepath = os.path.expanduser(args.profile)
 
     # Read profiles from profiles.ini in profile folder
-    profiles = read_profiles(basepath)
-
-    # Ask user which profile want's to open
-    section = ask_section(profiles)
+    profile = get_profile(basepath)
 
     # Prompt for Master Password
-    profile = os.path.join(basepath, section)
     password = ask_password(profile)
 
     # And finally decode all passwords
