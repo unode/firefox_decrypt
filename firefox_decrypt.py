@@ -322,9 +322,9 @@ class NSSInteraction(object):
 
             else:
                 output = (
-                    u"Website:   {0}\n".format(host),
+                    u"\nWebsite:   {0}\n".format(host),
                     u"Username: '{0}'\n".format(user),
-                    u"Password: '{0}'\n\n".format(passw),
+                    u"Password: '{0}'\n".format(passw),
                 )
                 for line in output:
                     if PY3:
