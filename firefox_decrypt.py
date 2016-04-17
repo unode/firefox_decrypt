@@ -44,6 +44,7 @@ except ImportError:
     # Python 2
     from ConfigParser import ConfigParser
 
+PY3 = sys.version_info.major > 2
 LOG = None
 VERBOSE = False
 
@@ -205,7 +206,7 @@ class NSSInteraction(object):
         error_str = self.NSS.PR_ErrorToString(error)
         error_name = self.NSS.PR_ErrorToName(error)
 
-        if sys.version_info[0] > 2:
+        if PY3:
             error_name = error_name.decode("utf8")
             error_str = error_str.decode("utf8")
 
@@ -320,9 +321,16 @@ class NSSInteraction(object):
                     to_export[address.netloc][user] = passw
 
             else:
-                sys.stdout.write(u"Website:   {0}\n".format(host))
-                sys.stdout.write(u"Username: '{0}'\n".format(user))
-                sys.stdout.write(u"Password: '{0}'\n\n".format(passw))
+                output = (
+                    u"Website:   {0}\n".format(host),
+                    u"Username: '{0}'\n".format(user),
+                    u"Password: '{0}'\n\n".format(passw),
+                )
+                for line in output:
+                    if PY3:
+                        sys.stdout.write(line)
+                    else:
+                        sys.stdout.write(line.encode("utf8"))
 
         credentials.done()
         self.NSS.NSS_Shutdown()
@@ -463,7 +471,7 @@ def ask_password(profile):
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
         passwd = sys.stdin.readline().rstrip("\n")
 
-    if sys.version_info[0] > 2:
+    if PY3:
         return passwd
     else:
         return passwd.decode(input_encoding)
