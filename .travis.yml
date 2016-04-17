@@ -1,0 +1,16 @@
+language: python
+# Use containers instead of VMs
+sudo: false
+
+addons:
+    apt:
+        packages:
+        - libnss3
+
+python:
+    - "2.7"
+    - "3.4"
+    - "3.5"
+
+script:
+    - cd tests && ./run_all -v

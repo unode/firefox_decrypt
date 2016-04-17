@@ -61,7 +61,23 @@ Exporting overwrites existing passwords without warning. Make sure you have a
 backup or are using the `pass git` functionality.
 
 
+#### Testing
+
+If you wish to run the testsuite locally chdir into `tests/` and run `./run_all`
+
+If any test fails on your system please ensure `libnss` is installed.
+
+If afterwards tests still fail, re-run with `./run_all -v` and file a bug
+report including this output. Please include some information about your
+system, including linux distribution, and version of libnss/firefox.
+
+It is much appreciated.
+
+
 #### Changelog
+
+##### 0.5.1
+- Testsuite is now in place
 
 ##### 0.5
 - Fix encoding/decoding problems in python 2 - #5
