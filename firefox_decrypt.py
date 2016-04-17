@@ -265,6 +265,8 @@ class NSSInteraction(object):
 
         credentials = obtain_credentials(profile)
 
+        to_export = {}
+
         for host, user, passw, enctype in credentials:
             got_password = True
 
@@ -305,28 +307,16 @@ class NSSInteraction(object):
             LOG.debug("Decoding username '%s' and password '%s' for website '%s'", type(user), type(passw), type(host))
 
             if export:
+                # Keep track of web-address, username and passwords
+                # If more than one username exists for the same web-address
+                # the username will be used as name of the file
                 address = urlparse(host)
-                passname = u"web/{0}/{1}".format(address.netloc, user)
-                data = u"{0}".format(passw)
 
-                LOG.debug("Inserting pass '%s' '%s'", passname, data)
+                if address.netloc not in to_export:
+                    to_export[address.netloc] = {user: passw}
 
-                # NOTE --force is used. Existing passwords will be overwritten
-                # NOTE --echo is used so that only one line is read from user input
-                cmd = ["pass", "insert", "--force", "--echo", passname]
-
-                # password twice because pass asks for confirmation
-                LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
-
-                p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-                out, err = p.communicate(data.encode("utf8"))
-
-                if p.returncode != 0:
-                    LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
-                    LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-                    raise Exit(Exit.PASSSTORE_ERROR)
-
-                LOG.debug("Successfully exported '%s'", passname)
+                else:
+                    to_export[address.netloc][user] = passw
 
             else:
                 sys.stdout.write(u"Website:   {0}\n".format(host))
@@ -335,6 +325,38 @@ class NSSInteraction(object):
 
         credentials.done()
         self.NSS.NSS_Shutdown()
+
+        if export:
+            # Save all passwords to passwordstore
+            for address in to_export:
+                for user, passw in to_export[address].items():
+                    if len(to_export[address]) > 1:
+                        passname = u"web/{0}/{1}".format(address, user)
+
+                    else:
+                        passname = u"web/{0}".format(address)
+
+                    LOG.debug("Exporting credentials for '%s'", passname)
+
+                    data = u"{0}\n{1}\n".format(passw, user)
+
+                    LOG.debug("Inserting pass '%s' '%s'", passname, data)
+
+                    # NOTE --force is used. Existing passwords will be overwritten
+                    cmd = ["pass", "insert", "--force", "--multiline", passname]
+
+                    # password twice because pass asks for confirmation
+                    LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
+
+                    p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+                    out, err = p.communicate(data.encode("utf8"))
+
+                    if p.returncode != 0:
+                        LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
+                        LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
+                        raise Exit(Exit.PASSSTORE_ERROR)
+
+                    LOG.debug("Successfully exported '%s'", passname)
 
         if not got_password:
             LOG.warn("No passwords found in selected profile")
