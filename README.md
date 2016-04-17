@@ -53,12 +53,21 @@ Since version **0.4** it is now also possible to export stored passwords to
 python firefox_decrypt.py --export-pass
 ```
 and **all** existing passwords will be exported after the pattern
-`web/<address>[:<port>]/<login>`.
+`web/<address>[:<port>]` unless multiple credentials exist for the same website
+in which case `/<login>` is appended.
 
 There is currently no way of selectively exporting passwords.
+Exporting overwrites existing passwords without warning. Make sure you have a
+backup or are using the `pass git` functionality.
 
 
 #### Changelog
+
+##### 0.5
+- Fix encoding/decoding problems in python 2 - #5
+- Exporting passwords to *pass* now includes the login name
+- Exported password identifiers no longer include login names unless multiple
+  credentials exist for the same address.
 
 ##### 0.4.2
 - If profile_path provided doesn't contain profiles.ini assume it is an actual profile
