@@ -73,6 +73,8 @@ system, including linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
+Current: [![Build Status](https://travis-ci.org/Unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/Unode/firefox_decrypt)
+
 
 #### Changelog
 
