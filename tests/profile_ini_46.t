@@ -8,7 +8,6 @@ TEST="$(get_test_data)"
 PAYLOAD="2\n${PASSWD}"
 
 
-# Python 2 tests
 diff -u <(echo -e ${PAYLOAD} | ${CMD} ${TEST} | grep -C1 doesntexist) <(get_user_data "doesntexist")
 diff -u <(echo -e ${PAYLOAD} | ${CMD} ${TEST} | grep -C1 onemore) <(get_user_data "onemore")
 diff -u <(echo -e ${PAYLOAD} | ${CMD} ${TEST} | grep -C1 cömplex) <(get_user_data "complex")
