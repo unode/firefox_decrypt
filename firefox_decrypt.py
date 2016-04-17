@@ -265,6 +265,7 @@ class NSSInteraction(object):
 
         credentials = obtain_credentials(profile)
 
+        LOG.info("Decrypting credentials")
         to_export = {}
 
         for host, user, passw, enctype in credentials:
@@ -328,6 +329,7 @@ class NSSInteraction(object):
 
         if export:
             # Save all passwords to passwordstore
+            LOG.info("Exporting credentials to password store")
             for address in to_export:
                 for user, passw in to_export[address].items():
                     if len(to_export[address]) > 1:
