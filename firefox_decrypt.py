@@ -368,12 +368,13 @@ def test_password_store(export):
     """
     # Nothing to do here if exporting wasn't requested
     if not export:
+        LOG.debug("Skipping password store test, not exporting")
         return
 
     LOG.debug("Testing if password store is installed and configured")
 
     try:
-        p = Popen(["pass", "version"], stdout=PIPE, stderr=PIPE)
+        p = Popen(["pass"], stdout=PIPE, stderr=PIPE)
     except OSError as e:
         if e.errno == 2:
             LOG.error("Password store is not installed and exporting was requested")
@@ -384,6 +385,7 @@ def test_password_store(export):
             raise Exit(Exit.UNKNOWN_ERROR)
 
     out, err = p.communicate()
+    LOG.debug("pass returned: %s %s", out, err)
 
     if p.returncode != 0:
         if 'Try "pass init"' in err:
