@@ -248,6 +248,80 @@ class NSSInteraction(object):
         else:
             LOG.warn("Attempting decryption with no Master Password")
 
+    def decode_entry(self, user, passw, host):
+        """Decrypt one entry in the database
+        """
+        username = Item()
+        passwd = Item()
+        outuser = Item()
+        outpass = Item()
+
+        username.data = cast(c_char_p(b64decode(user)), c_void_p)
+        username.len = len(b64decode(user))
+        passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
+        passwd.len = len(b64decode(passw))
+
+        LOG.debug("Decrypting username data '%s'", user)
+
+        i = self.NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None)
+        LOG.debug("Decryption of username returned %s", i)
+
+        if i == -1:
+            LOG.error("Passwords protected by a Master Password!")
+            self.handle_error()
+            raise Exit(Exit.NEED_MASTER_PASSWORD)
+
+        LOG.debug("Decrypting password data '%s'", passw)
+
+        i = self.NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
+        LOG.debug("Decryption of password returned %s", i)
+
+        if i == -1:
+            # This shouldn't really happen but failsafe just in case
+            LOG.error("Given Master Password is not correct!")
+            self.handle_error()
+            raise Exit(Exit.UNEXPECTED_END)
+
+        user = string_at(outuser.data, outuser.len)
+        passw = string_at(outpass.data, outpass.len)
+
+        return user, passw
+
+    @staticmethod
+    def export_pass(to_export):
+        # Save all passwords to passwordstore
+        LOG.info("Exporting credentials to password store")
+        for address in to_export:
+            for user, passw in to_export[address].items():
+                # When more than one account exist for the same address, add
+                # the login to the password identifier
+                if len(to_export[address]) > 1:
+                    passname = u"web/{0}/{1}".format(address, user)
+
+                else:
+                    passname = u"web/{0}".format(address)
+
+                LOG.debug("Exporting credentials for '%s'", passname)
+
+                data = u"{0}\n{1}\n".format(passw, user)
+
+                LOG.debug("Inserting pass '%s' '%s'", passname, data)
+
+                # NOTE --force is used. Existing passwords will be overwritten
+                cmd = ["pass", "insert", "--force", "--multiline", passname]
+
+                LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
+
+                p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+                out, err = p.communicate(data.encode("utf8"))
+
+                if p.returncode != 0:
+                    LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
+                    LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
+                    raise Exit(Exit.PASSSTORE_ERROR)
+
+                LOG.debug("Successfully exported '%s'", passname)
+
     def decrypt_passwords(self, profile, password, export):
         """
         Decrypt requested profile using the provided password and print out all
@@ -255,11 +329,6 @@ class NSSInteraction(object):
         """
 
         self.initialize_libnss(profile, password)
-
-        username = Item()
-        passwd = Item()
-        outuser = Item()
-        outpass = Item()
 
         # Any password in this profile store at all?
         got_password = False
@@ -272,35 +341,9 @@ class NSSInteraction(object):
         for host, user, passw, enctype in credentials:
             got_password = True
 
+            # enctype informs if passwords are encrypted and protected by a master password
             if enctype:
-                username.data = cast(c_char_p(b64decode(user)), c_void_p)
-                username.len = len(b64decode(user))
-                passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
-                passwd.len = len(b64decode(passw))
-
-                LOG.debug("Decrypting username data '%s'", user)
-
-                i = self.NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None)
-                LOG.debug("Decryption of username returned %s", i)
-
-                if i == -1:
-                    LOG.error("Passwords protected by a Master Password!")
-                    self.handle_error()
-                    raise Exit(Exit.NEED_MASTER_PASSWORD)
-
-                LOG.debug("Decrypting password data '%s'", passw)
-
-                i = self.NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
-                LOG.debug("Decryption of password returned %s", i)
-
-                if i == -1:
-                    # This shouldn't really happen but failsafe just in case
-                    LOG.error("Given Master Password is not correct!")
-                    self.handle_error()
-                    raise Exit(Exit.UNEXPECTED_END)
-
-                user = string_at(outuser.data, outuser.len)
-                passw = string_at(outpass.data, outpass.len)
+                user, passw = self.decode_entry(user, passw, host)
 
             user = user.decode("utf8")
             passw = passw.decode("utf8")
@@ -336,37 +379,7 @@ class NSSInteraction(object):
         self.NSS.NSS_Shutdown()
 
         if export:
-            # Save all passwords to passwordstore
-            LOG.info("Exporting credentials to password store")
-            for address in to_export:
-                for user, passw in to_export[address].items():
-                    if len(to_export[address]) > 1:
-                        passname = u"web/{0}/{1}".format(address, user)
-
-                    else:
-                        passname = u"web/{0}".format(address)
-
-                    LOG.debug("Exporting credentials for '%s'", passname)
-
-                    data = u"{0}\n{1}\n".format(passw, user)
-
-                    LOG.debug("Inserting pass '%s' '%s'", passname, data)
-
-                    # NOTE --force is used. Existing passwords will be overwritten
-                    cmd = ["pass", "insert", "--force", "--multiline", passname]
-
-                    # password twice because pass asks for confirmation
-                    LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
-
-                    p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-                    out, err = p.communicate(data.encode("utf8"))
-
-                    if p.returncode != 0:
-                        LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
-                        LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-                        raise Exit(Exit.PASSSTORE_ERROR)
-
-                    LOG.debug("Successfully exported '%s'", passname)
+            self.export_pass(to_export)
 
         if not got_password:
             LOG.warn("No passwords found in selected profile")
