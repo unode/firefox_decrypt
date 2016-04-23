@@ -248,7 +248,7 @@ class NSSInteraction(object):
         else:
             LOG.warn("Attempting decryption with no Master Password")
 
-    def decode_entry(self, user, passw, host):
+    def decode_entry(self, user, passw):
         """Decrypt one entry in the database
         """
         username = Item()
@@ -287,41 +287,6 @@ class NSSInteraction(object):
 
         return user, passw
 
-    @staticmethod
-    def export_pass(to_export):
-        # Save all passwords to passwordstore
-        LOG.info("Exporting credentials to password store")
-        for address in to_export:
-            for user, passw in to_export[address].items():
-                # When more than one account exist for the same address, add
-                # the login to the password identifier
-                if len(to_export[address]) > 1:
-                    passname = u"web/{0}/{1}".format(address, user)
-
-                else:
-                    passname = u"web/{0}".format(address)
-
-                LOG.debug("Exporting credentials for '%s'", passname)
-
-                data = u"{0}\n{1}\n".format(passw, user)
-
-                LOG.debug("Inserting pass '%s' '%s'", passname, data)
-
-                # NOTE --force is used. Existing passwords will be overwritten
-                cmd = ["pass", "insert", "--force", "--multiline", passname]
-
-                LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
-
-                p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-                out, err = p.communicate(data.encode("utf8"))
-
-                if p.returncode != 0:
-                    LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
-                    LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-                    raise Exit(Exit.PASSSTORE_ERROR)
-
-                LOG.debug("Successfully exported '%s'", passname)
-
     def decrypt_passwords(self, profile, password, export):
         """
         Decrypt requested profile using the provided password and print out all
@@ -343,7 +308,7 @@ class NSSInteraction(object):
 
             # enctype informs if passwords are encrypted and protected by a master password
             if enctype:
-                user, passw = self.decode_entry(user, passw, host)
+                user, passw = self.decode_entry(user, passw)
 
             user = user.decode("utf8")
             passw = passw.decode("utf8")
@@ -379,7 +344,7 @@ class NSSInteraction(object):
         self.NSS.NSS_Shutdown()
 
         if export:
-            self.export_pass(to_export)
+            export_pass(to_export)
 
         if not got_password:
             LOG.warn("No passwords found in selected profile")
@@ -434,6 +399,45 @@ def obtain_credentials(profile):
             raise Exit(Exit.MISSING_SECRETS)
 
     return credentials
+
+
+def export_pass(to_export):
+    """Export given passwords to password store
+
+    Format of "to_export" should be:
+        {"address": {"login": "password", ...}, ...}
+    """
+    LOG.info("Exporting credentials to password store")
+    for address in to_export:
+        for user, passw in to_export[address].items():
+            # When more than one account exist for the same address, add
+            # the login to the password identifier
+            if len(to_export[address]) > 1:
+                passname = u"web/{0}/{1}".format(address, user)
+
+            else:
+                passname = u"web/{0}".format(address)
+
+            LOG.debug("Exporting credentials for '%s'", passname)
+
+            data = u"{0}\n{1}\n".format(passw, user)
+
+            LOG.debug("Inserting pass '%s' '%s'", passname, data)
+
+            # NOTE --force is used. Existing passwords will be overwritten
+            cmd = ["pass", "insert", "--force", "--multiline", passname]
+
+            LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
+
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            out, err = p.communicate(data.encode("utf8"))
+
+            if p.returncode != 0:
+                LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
+                LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
+                raise Exit(Exit.PASSSTORE_ERROR)
+
+            LOG.debug("Successfully exported '%s'", passname)
 
 
 def ask_section(profiles):
