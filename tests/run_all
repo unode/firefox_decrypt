@@ -114,9 +114,10 @@ class TestRunner(object):
 
         # This is a pretty weird way to do it, and not realiable.
         # We are dealing with some binary tests though.
-        with open(test, 'r') as fh:
-            header = fh.read(100).split("\n")
-            if len(header) >= 2 and "/usr/bin/env python" in header[0]:
+        with open(test, 'rb') as fh:
+            header = fh.read(100).split(b"\n")
+            if (len(header) >= 2 and (b"/usr/bin/env python" in header[0] or
+                                      b"bash_tap" in header[1])):
                 return True
             else:
                 return False

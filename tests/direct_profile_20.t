@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-
-source bash_tap_fd.sh
+. bash_tap_fd.sh
 
 PASSWD=$(get_password)
 CMD=$(get_script)
