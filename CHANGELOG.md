@@ -1,5 +1,8 @@
 #### Changelog
 
+##### 0.5.2
+- non-interative mode (`-n/--no-interactive`, `-l/--list`, `-c/--choice`)
+
 ##### 0.5.1
 - Testsuite is now in place
 
