@@ -489,7 +489,7 @@ def ask_section(profiles):
     return final_choice
 
 
-def ask_password(profile):
+def ask_password(profile, no_interactive):
     """
     Prompt for profile password
     """
@@ -497,7 +497,7 @@ def ask_password(profile):
     input_encoding = utf8 if sys.stdin.encoding in (None, 'ascii') else sys.stdin.encoding
     passmsg = "\nMaster Password for profile {}: ".format(profile)
 
-    if sys.stdin.isatty():
+    if sys.stdin.isatty() and not no_interactive:
         passwd = getpass(passmsg)
 
     else:
@@ -654,7 +654,7 @@ def main():
     profile = get_profile(basepath, args.no_interactive, args.choice, args.list)
 
     # Prompt for Master Password
-    password = ask_password(profile)
+    password = ask_password(profile, args.no_interactive)
 
     # And finally decode all passwords
     nss.decrypt_passwords(profile, password, args.export_pass)

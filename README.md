@@ -60,6 +60,52 @@ There is currently no way of selectively exporting passwords.
 Exporting overwrites existing passwords without warning. Make sure you have a
 backup or are using the `pass git` functionality.
 
+There also is an non-interactive mode available, `firefox_decrypt.py` then never will ask
+for any interaction like profile choice or master password.
+Use it with `-n/--no-interactive`. Tell your profile choice by `-c/--choice N` where N is
+the number of the profile you wish to decrypt (starting from **1**). You can list all
+available profiles with `-l/--list` (to stdout).
+Your master password is read from stdin.
+
+    $ python firefox_decrypt.py --list
+    1 -> l1u1xh65.default
+    2 -> vuhdnx5b.YouTube
+    3 -> 1d8vcool.newdefault
+    4 -> ekof2ces.SEdu
+    5 -> 8a52xmtt.Fresh
+
+    $ read -sp "Master Password: " PASSWORD
+    Master Password:
+
+    $ echo $PASSWORD | python firefox_decrypt.py --no-interactive --choice 4
+    Website:   https://login.example.com
+    Username: 'john.doe'
+    Password: '1n53cur3'
+
+    Website:   https://example.org
+    Username: 'max.mustermann'
+    Password: 'Passwort1234'
+
+    Website:   https://github.com
+    Username: 'octocat'
+    Password: 'qJZo6FduRcHw'
+
+    [...snip...]
+
+    $ echo $PASSWORD | python firefox_decrypt.py -nc 1
+    Website:   https://git-scm.com
+    Username: 'foo'
+    Password: 'bar'
+
+    Website:   https://gitlab.com
+    Username: 'whatdoesthefoxsay'
+    Password: 'w00fw00f'
+
+    [...snip...]
+
+    $ # Unset Password
+    $ PASSWORD=
+
 
 #### Testing
 
