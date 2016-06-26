@@ -73,8 +73,13 @@ class Exit(Exception):
     PASSSTORE_MISSING = 21
     PASSSTORE_ERROR = 22
 
+    READ_GOT_EOF = 30
+    MISSING_CHOICE = 31
+    NO_SUCH_PROFILE = 32
+
     UNKNOWN_ERROR = 100
     UNEXPECTED_END = 101
+    KEYBOARD_INTERRUPT = 102
 
     def __init__(self, exitcode):
         self.exitcode = exitcode
@@ -462,28 +467,38 @@ def print_sections(sections, textIOWrapper=sys.stderr):
         textIOWrapper.write("{0} -> {1}\n".format(i, sections[i]))
     textIOWrapper.flush()
 
-def ask_section(profiles):
+def ask_section(profiles, choice_arg):
     """
     Prompt the user which profile should be used for decryption
     """
     sections = get_sections(profiles)
 
-    # If only one menu entry exists, use it without prompting
-    if len(sections) == 1:
-        choice = "1"
-
+    # Do not ask for choice if user already gave one
+    if choice_arg and len(choice_arg) == 1:
+        choice = choice_arg[0]
     else:
-        choice = None
-        while choice not in sections:
-            sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
-            print_sections(sections)
-            try:
-                choice = raw_input("Choice: ")
-            except EOFError as e:
-                LOG.error("Could not read Choice, got EOF")
-                raise Exit(14)
+        # If only one menu entry exists, use it without prompting
+        if len(sections) == 1:
+            choice = "1"
 
-    final_choice = sections[choice]
+        else:
+            choice = None
+            while choice not in sections:
+                sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
+                print_sections(sections)
+                try:
+                    choice = raw_input("Choice: ")
+                except EOFError as e:
+                    LOG.error("Could not read Choice, got EOF")
+                    raise Exit(Exit.READ_GOT_EOF)
+
+
+    try:
+        final_choice = sections[choice]
+    except KeyError:
+        LOG.error("Profile No. %s does not exist!", choice)
+        raise Exit(Exit.NO_SUCH_PROFILE)
+
     LOG.debug("Profile selection matched %s", final_choice)
 
     return final_choice
@@ -567,18 +582,18 @@ def get_profile(basepath, no_interactive, choice, ljst): # ljsr means list
                 try:
                     section = sections[(choice[0])]
                 except KeyError:
-                    LOG.error("There is no profile with key '%s'!", choice[0])
-                    raise Exit(16)
+                    LOG.error("Profile No. %s does not exist!", choice[0])
+                    raise Exit(Exit.NO_SUCH_PROFILE)
 
             elif len(sections) == 1:
                 section = sections[str(1)]
 
             else:
                 LOG.error("Don't know which profile to decrypt. We are in non-interactive mode and -c/--choice is missing.")
-                raise Exit(15)
+                raise Exit(Exit.MISSING_CHOICE)
         else:
             # Ask user which profile to open
-            section = ask_section(profiles)
+            section = ask_section(profiles, choice)
 
         profile = os.path.join(basepath, section)
 
@@ -665,5 +680,6 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt as e:
         print("Quit.")
+        sys.exit(Exit.KEYBOARD_INTERRUPT)
     except Exit as e:
         sys.exit(e.exitcode)
