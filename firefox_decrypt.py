@@ -525,10 +525,10 @@ def ask_password(profile, no_interactive):
         return passwd.decode(input_encoding)
 
 
-def read_profiles(basepath, ljst): # ljst means list
+def read_profiles(basepath, list_profiles):
     """
     Parse Firefox profiles in provided location.
-    If ljst is true, will exit after listing available profiles.
+    If list_profiles is true, will exit after listing available profiles.
     """
     profileini = os.path.join(basepath, "profiles.ini")
 
@@ -544,7 +544,7 @@ def read_profiles(basepath, ljst): # ljst means list
 
     LOG.debug("Read profiles %s", profiles.sections())
 
-    if ljst:
+    if list_profiles:
         LOG.debug("Listing available profiles...")
         print_sections(get_sections(profiles), sys.stdout)
         raise Exit(0)
@@ -552,16 +552,16 @@ def read_profiles(basepath, ljst): # ljst means list
     return profiles
 
 
-def get_profile(basepath, no_interactive, choice, ljst): # ljsr means list
+def get_profile(basepath, no_interactive, choice, list_profiles):
     """
     Select profile to use by either reading profiles.ini or assuming given
     path is already a profile
     If no_interactive is true, will not try to ask which profile to decrypt.
     choice contains the choice the user gave us as an CLI arg.
-    If ljst is true will exits after listing all available profiles.
+    If list_profiles is true will exits after listing all available profiles.
     """
     try:
-        profiles = read_profiles(basepath, ljst)
+        profiles = read_profiles(basepath, list_profiles)
     except Exit as e:
         if e.exitcode == Exit.MISSING_PROFILEINI:
             LOG.warn("Continuing and assuming '%s' is a profile location", basepath)
@@ -586,7 +586,7 @@ def get_profile(basepath, no_interactive, choice, ljst): # ljsr means list
                     raise Exit(Exit.NO_SUCH_PROFILE)
 
             elif len(sections) == 1:
-                section = sections[str(1)]
+                section = sections['1']
 
             else:
                 LOG.error("Don't know which profile to decrypt. We are in non-interactive mode and -c/--choice is missing.")
