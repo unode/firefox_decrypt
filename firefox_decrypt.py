@@ -62,6 +62,7 @@ class Exit(Exception):
     MISSING_PROFILEINI = 2
     MISSING_SECRETS = 3
     BAD_PROFILEINI = 4
+    LOCATION_NO_DIRECTORY = 5
 
     FAIL_LOAD_NSS = 11
     FAIL_INIT_NSS = 12
@@ -566,6 +567,10 @@ def get_profile(basepath, no_interactive, choice, list_profiles):
         if e.exitcode == Exit.MISSING_PROFILEINI:
             LOG.warn("Continuing and assuming '%s' is a profile location", basepath)
             profile = basepath
+
+            if list_profiles:
+                LOG.error("Listing single profiles not permitted.")
+                raise
 
             if not os.path.isdir(profile):
                 LOG.error("Profile location '%s' is not a directory", profile)
