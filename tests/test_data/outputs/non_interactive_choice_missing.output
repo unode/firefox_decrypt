@@ -1,0 +1,2 @@
+- ERROR - Don't know which profile to decrypt. We are in non-interactive mode and -c/--choice is missing.
+31

@@ -62,6 +62,7 @@ class Exit(Exception):
     MISSING_PROFILEINI = 2
     MISSING_SECRETS = 3
     BAD_PROFILEINI = 4
+    LOCATION_NO_DIRECTORY = 5
 
     FAIL_LOAD_NSS = 11
     FAIL_INIT_NSS = 12
@@ -73,8 +74,13 @@ class Exit(Exception):
     PASSSTORE_MISSING = 21
     PASSSTORE_ERROR = 22
 
+    READ_GOT_EOF = 30
+    MISSING_CHOICE = 31
+    NO_SUCH_PROFILE = 32
+
     UNKNOWN_ERROR = 100
     UNEXPECTED_END = 101
+    KEYBOARD_INTERRUPT = 102
 
     def __init__(self, exitcode):
         self.exitcode = exitcode
@@ -221,7 +227,7 @@ class NSSInteraction(object):
         LOG.debug("Initializing NSS returned %s", i)
 
         if i != 0:
-            LOG.error("Couldn't initialize NSS")
+            LOG.error("Couldn't initialize NSS, maybe '%s' is not a valid profile?", profile)
             self.handle_error()
             raise Exit(Exit.FAIL_INIT_NSS)
 
@@ -440,9 +446,9 @@ def export_pass(to_export):
             LOG.debug("Successfully exported '%s'", passname)
 
 
-def ask_section(profiles):
+def get_sections(profiles):
     """
-    Prompt the user which profile should be used for decryption
+    Returns hash of profile numbers and profile names.
     """
     sections = {}
     i = 1
@@ -452,28 +458,54 @@ def ask_section(profiles):
             i += 1
         else:
             continue
+    return sections
 
-    # If only one menu entry exists, use it without prompting
-    if i == 2:
-        choice = "1"
+def print_sections(sections, textIOWrapper=sys.stderr):
+    """
+    Prints all available sections to an textIOWrapper (defaults to sys.stderr)
+    """
+    for i in sorted(sections):
+        textIOWrapper.write("{0} -> {1}\n".format(i, sections[i]))
+    textIOWrapper.flush()
 
+def ask_section(profiles, choice_arg):
+    """
+    Prompt the user which profile should be used for decryption
+    """
+    sections = get_sections(profiles)
+
+    # Do not ask for choice if user already gave one
+    if choice_arg and len(choice_arg) == 1:
+        choice = choice_arg[0]
     else:
-        choice = None
-        while choice not in sections:
-            sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
-            for i in sorted(sections):
-                sys.stderr.write("{0} -> {1}\n".format(i, sections[i]))
-            sys.stderr.flush()
+        # If only one menu entry exists, use it without prompting
+        if len(sections) == 1:
+            choice = "1"
 
-            choice = raw_input("Choice: ")
+        else:
+            choice = None
+            while choice not in sections:
+                sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
+                print_sections(sections)
+                try:
+                    choice = raw_input("Choice: ")
+                except EOFError as e:
+                    LOG.error("Could not read Choice, got EOF")
+                    raise Exit(Exit.READ_GOT_EOF)
 
-    final_choice = sections[choice]
+
+    try:
+        final_choice = sections[choice]
+    except KeyError:
+        LOG.error("Profile No. %s does not exist!", choice)
+        raise Exit(Exit.NO_SUCH_PROFILE)
+
     LOG.debug("Profile selection matched %s", final_choice)
 
     return final_choice
 
 
-def ask_password(profile):
+def ask_password(profile, no_interactive):
     """
     Prompt for profile password
     """
@@ -481,7 +513,7 @@ def ask_password(profile):
     input_encoding = utf8 if sys.stdin.encoding in (None, 'ascii') else sys.stdin.encoding
     passmsg = "\nMaster Password for profile {}: ".format(profile)
 
-    if sys.stdin.isatty():
+    if sys.stdin.isatty() and not no_interactive:
         passwd = getpass(passmsg)
 
     else:
@@ -494,8 +526,10 @@ def ask_password(profile):
         return passwd.decode(input_encoding)
 
 
-def read_profiles(basepath):
-    """Parse Firefox profiles in provided location
+def read_profiles(basepath, list_profiles):
+    """
+    Parse Firefox profiles in provided location.
+    If list_profiles is true, will exit after listing available profiles.
     """
     profileini = os.path.join(basepath, "profiles.ini")
 
@@ -511,19 +545,32 @@ def read_profiles(basepath):
 
     LOG.debug("Read profiles %s", profiles.sections())
 
+    if list_profiles:
+        LOG.debug("Listing available profiles...")
+        print_sections(get_sections(profiles), sys.stdout)
+        raise Exit(0)
+
     return profiles
 
 
-def get_profile(basepath):
-    """Select profile to use by either reading profiles.ini or assuming given
+def get_profile(basepath, no_interactive, choice, list_profiles):
+    """
+    Select profile to use by either reading profiles.ini or assuming given
     path is already a profile
+    If no_interactive is true, will not try to ask which profile to decrypt.
+    choice contains the choice the user gave us as an CLI arg.
+    If list_profiles is true will exits after listing all available profiles.
     """
     try:
-        profiles = read_profiles(basepath)
+        profiles = read_profiles(basepath, list_profiles)
     except Exit as e:
         if e.exitcode == Exit.MISSING_PROFILEINI:
             LOG.warn("Continuing and assuming '%s' is a profile location", basepath)
             profile = basepath
+
+            if list_profiles:
+                LOG.error("Listing single profiles not permitted.")
+                raise
 
             if not os.path.isdir(profile):
                 LOG.error("Profile location '%s' is not a directory", profile)
@@ -531,8 +578,28 @@ def get_profile(basepath):
         else:
             raise
     else:
-        # Ask user which profile to open
-        section = ask_section(profiles)
+        if no_interactive:
+
+            sections = get_sections(profiles)
+
+            if choice and len(choice) == 1:
+
+                try:
+                    section = sections[(choice[0])]
+                except KeyError:
+                    LOG.error("Profile No. %s does not exist!", choice[0])
+                    raise Exit(Exit.NO_SUCH_PROFILE)
+
+            elif len(sections) == 1:
+                section = sections['1']
+
+            else:
+                LOG.error("Don't know which profile to decrypt. We are in non-interactive mode and -c/--choice is missing.")
+                raise Exit(Exit.MISSING_CHOICE)
+        else:
+            # Ask user which profile to open
+            section = ask_section(profiles, choice)
+
         profile = os.path.join(basepath, section)
 
         if not os.path.isdir(profile):
@@ -554,6 +621,12 @@ def parse_sys_args():
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
+    parser.add_argument("-n", "--no-interactive", action="store_true",
+                        help="Disable interactivity.")
+    parser.add_argument("-c", "--choice", nargs=1,
+                        help="The profile to use (starts with 1). If only one profile, defaults to that.")
+    parser.add_argument("-l", "--list", action="store_true",
+                        help="List profiles and exit.")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
 
@@ -598,10 +671,10 @@ def main():
     basepath = os.path.expanduser(args.profile)
 
     # Read profiles from profiles.ini in profile folder
-    profile = get_profile(basepath)
+    profile = get_profile(basepath, args.no_interactive, args.choice, args.list)
 
     # Prompt for Master Password
-    password = ask_password(profile)
+    password = ask_password(profile, args.no_interactive)
 
     # And finally decode all passwords
     nss.decrypt_passwords(profile, password, args.export_pass)
@@ -610,5 +683,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt as e:
+        print("Quit.")
+        sys.exit(Exit.KEYBOARD_INTERRUPT)
     except Exit as e:
         sys.exit(e.exitcode)
