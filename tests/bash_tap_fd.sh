@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # This file only contains helper functions for making testing easier.
 # The magic happens in bash_tap.sh sourced at the end of this file.
-#
-# Subject to the MIT License. See LICENSE file or http://opensource.org/licenses/MIT
-# Copyright (c) 2015-2016 Wilhelm Schürmann
 
 function get_password {
     echo "$(cat ${bashtap_org_pwd}/test_data/master_password)"
