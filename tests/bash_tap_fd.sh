@@ -25,7 +25,7 @@ function get_output_data {
     echo -e "$(cat ${bashtap_org_pwd}/test_data/outputs/${1}.output)"
 }
 
-# Cut out the first two fields, from log as they are date and time (which would make it impossibible to test ;D)
+# Cut out the first two fields, from log as they are date and time (which would make it impossible to test ;D)
 function remove_log_date_time {
     cat - | cut -d" " -f3-
 }
