@@ -121,7 +121,7 @@ class SqliteCredentials(Credentials):
     """SQLite credentials backend manager
     """
     def __init__(self, profile):
-        db = profile + "/signons.sqlite"
+        db = os.path.join(profile, "signons.sqlite")
 
         super(SqliteCredentials, self).__init__(db)
 
@@ -149,7 +149,7 @@ class JsonCredentials(Credentials):
     """JSON credentials backend manager
     """
     def __init__(self, profile):
-        db = profile + "/logins.json"
+        db = os.path.join(profile, "logins.json")
 
         super(JsonCredentials, self).__init__(db)
 
@@ -183,10 +183,24 @@ class NSSInteraction(object):
 
         if os.name == "nt":
             nssname = "nss3.dll"
-            firefox = r"c:\Program Files (x86)\Mozilla Firefox"
+            firefox = r"C:\Program Files (x86)\Mozilla Firefox"
             os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
             LOG.debug("PATH is now %s", os.environ["PATH"])
 
+        elif os.uname()[0] == "Darwin":
+            nssname = "libnss3.dylib"
+            locations = (
+                "/usr/local/lib/nss",
+                "/usr/local/lib",
+                "/opt/local/lib/nss",
+                "/sw/lib/firefox",
+                "/sw/lib/mozilla",
+            )
+
+            for loc in locations:
+                if os.path.exists(os.path.join(loc, nssname)):
+                    firefox = loc
+                    break
         else:
             nssname = "libnss3.so"
 
@@ -460,6 +474,7 @@ def get_sections(profiles):
             continue
     return sections
 
+
 def print_sections(sections, textIOWrapper=sys.stderr):
     """
     Prints all available sections to an textIOWrapper (defaults to sys.stderr)
@@ -467,6 +482,7 @@ def print_sections(sections, textIOWrapper=sys.stderr):
     for i in sorted(sections):
         textIOWrapper.write("{0} -> {1}\n".format(i, sections[i]))
     textIOWrapper.flush()
+
 
 def ask_section(profiles, choice_arg):
     """
@@ -489,10 +505,9 @@ def ask_section(profiles, choice_arg):
                 print_sections(sections)
                 try:
                     choice = raw_input("Choice: ")
-                except EOFError as e:
+                except EOFError:
                     LOG.error("Could not read Choice, got EOF")
                     raise Exit(Exit.READ_GOT_EOF)
-
 
     try:
         final_choice = sections[choice]
@@ -612,7 +627,13 @@ def get_profile(basepath, no_interactive, choice, list_profiles):
 def parse_sys_args():
     """Parse command line arguments
     """
-    profile_path = "~/.mozilla/firefox/"
+
+    if os.name == "nt":
+        profile_path = os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox")
+    elif os.uname()[0] == "Darwin":
+        profile_path = "~/Library/Application Support/Firefox"
+    else:
+        profile_path = "~/.mozilla/firefox"
 
     parser = argparse.ArgumentParser(
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
