@@ -1,7 +1,10 @@
 #### Changelog
 
+##### 0.5.3
+- Compatibility improvements with Windows and OSX
+
 ##### 0.5.2
-- non-interative mode (`-n/--no-interactive`, `-l/--list`, `-c/--choice`)
+- Non-interative mode (`-n/--no-interactive`, `-l/--list`, `-c/--choice`)
 
 ##### 0.5.1
 - Testsuite is now in place
@@ -13,7 +16,7 @@
   credentials exist for the same address.
 
 ##### 0.4.2
-- If profile_path provided doesn't contain profiles.ini assume it is an actual profile
+- If profile\_path provided doesn't contain profiles.ini assume it is an actual profile
 
 ##### 0.4.1
 - If only a single profile is found do not prompt user for profile
