@@ -14,8 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Disclamer: Parts of this script were taken from the great tool:
-# dumpzilla at www.dumpzilla.org
+# Based on original work from: www.dumpzilla.org
 
 import argparse
 import json
