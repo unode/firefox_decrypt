@@ -105,6 +105,17 @@ Your master password is read from stdin.
     $ PASSWORD=
 
 
+#### Troubleshooting
+
+If you run into problems please try running `firefox_decrypt` in high verbosity mode by calling it with:
+
+```
+python firefox_decrypt.py -vvv
+```
+
+If the output doesn't help you identify the cause and a solution to the problem please file a bug report including the verbose output.  
+**NOTE**: Be aware that your profile password as well as other passwords may be visible in the output so make sure you remove any sensitive data before including it in the bug report.
+
 #### Testing
 
 If you wish to run the testsuite locally chdir into `tests/` and run `./run_all`
