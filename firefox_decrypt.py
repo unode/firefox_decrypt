@@ -175,20 +175,36 @@ class NSSInteraction(object):
         self.NSS = None
         self.load_libnss()
 
+    def find_nss(self, locations, nssname):
+        """Locate nss is one of the many possible locations
+        """
+        for loc in locations:
+            if os.path.exists(os.path.join(loc, nssname)):
+                return loc
+
+        LOG.warn("%s not found on any of the default locations for this platform. "
+                 "Attempting to continue nonetheless.", nssname)
+        return ""
+
     def load_libnss(self):
         """Load libnss into python using the CDLL interface
         """
-        firefox = ""
-
         if os.name == "nt":
             nssname = "nss3.dll"
-            firefox = r"C:\Program Files (x86)\Mozilla Firefox"
+            locations = (
+                "",  # Current directory or system lib finder
+                r"C:\Program Files (x86)\Mozilla Firefox",
+                r"C:\Program Files\Mozilla Firefox"
+            )
+            firefox = self.find_nss(locations, nssname)
+
             os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
             LOG.debug("PATH is now %s", os.environ["PATH"])
 
         elif os.uname()[0] == "Darwin":
             nssname = "libnss3.dylib"
             locations = (
+                "",  # Current directory or system lib finder
                 "/usr/local/lib/nss",
                 "/usr/local/lib",
                 "/opt/local/lib/nss",
@@ -196,12 +212,10 @@ class NSSInteraction(object):
                 "/sw/lib/mozilla",
             )
 
-            for loc in locations:
-                if os.path.exists(os.path.join(loc, nssname)):
-                    firefox = loc
-                    break
+            firefox = self.find_nss(locations, nssname)
         else:
             nssname = "libnss3.so"
+            firefox = ""  # Current directory or system lib finder
 
         try:
             nsslib = os.path.join(firefox, nssname)

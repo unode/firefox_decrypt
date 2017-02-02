@@ -1,5 +1,8 @@
 #### Changelog
 
+##### 0.5.4
+- Search for NSS on additional folders when on Windows
+
 ##### 0.5.3
 - Compatibility improvements with Windows and OSX
 
