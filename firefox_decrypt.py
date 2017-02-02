@@ -175,7 +175,8 @@ class NSSInteraction(object):
         self.NSS = None
         self.load_libnss()
 
-    def find_nss(self, locations, nssname):
+    @staticmethod
+    def find_nss(locations, nssname):
         """Locate nss is one of the many possible locations
         """
         for loc in locations:
