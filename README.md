@@ -116,6 +116,11 @@ python firefox_decrypt.py -vvv
 If the output doesn't help you identify the cause and a solution to the problem please file a bug report including the verbose output.  
 **NOTE**: Be aware that your profile password as well as other passwords may be visible in the output so make sure you remove any sensitive data before including it in the bug report.
 
+##### Windows
+
+If you are on Windows, make sure your Python and Firefox are both 32 or 64 bits.  
+If you mix architectures the code will fail. More information on issue [#8](https://github.com/Unode/firefox_decrypt/issues/8).
+
 #### Testing
 
 If you wish to run the testsuite locally chdir into `tests/` and run `./run_all`
