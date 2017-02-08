@@ -6,7 +6,7 @@ CMD=$(get_script)
 TEST="$(get_test_data)/test_profile_firefox_46"
 
 
-# The first process subsitution is rather complex:
+# The first process substitution is rather complex:
 # As first we're interested in stderr, so 2>&1.
 # get_test_data() generates an absolute path, so we need to make it relative (as the path would be different for each tester)
 # last but not least we're also interested in the exit code.
