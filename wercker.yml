@@ -1,0 +1,46 @@
+py2:
+    box: python:2
+    steps:
+        - install-packages:
+            packages: libnss3
+        - script:
+            name: Test python2
+            code: |
+                cd tests
+                ./run_all -v
+
+py3:
+    box: python:3
+    steps:
+        - install-packages:
+            packages: libnss3
+        - script:
+            name: Test python3
+            code: |
+                cd tests
+                ./run_all -v
+
+
+debian:
+    box: debian:testing
+    steps:
+        - install-packages:
+            packages: python libnss3
+        - script:
+            name: Test on debian (testing)
+            code: |
+                cd tests
+                ./run_all -v
+
+fedora:
+    box: fedora:latest
+    steps:
+        - script:
+            name: Install packages
+            code: yum install python nss -y
+
+        - script:
+            name: Test on fedora (latest)
+            code: |
+                cd tests
+                ./run_all -v
