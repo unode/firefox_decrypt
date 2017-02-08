@@ -22,6 +22,18 @@ except ImportError:
 TIMEOUT = .2
 
 
+def comment(text):
+    newtext = []
+    for line in text.split("\n"):
+        if line.strip():
+            if line.startswith("ok") or line.startswith("not ok"):
+                line = "# (original state) " + line
+
+            newtext.append(line)
+
+    return "\n".join(newtext)
+
+
 def run_test(testqueue, outqueue, threadname):
     start = time.time()
     while True:
@@ -32,19 +44,32 @@ def run_test(testqueue, outqueue, threadname):
 
         log.info("Running test %s", test)
 
+        failed = False
+
         try:
             p = Popen(os.path.abspath(test), stdout=PIPE, stderr=PIPE,
                       env=os.environ)
             out, err = p.communicate()
         except Exception as e:
             log.exception(e)
-            # Premature end
-            break
+            failed = True
+            reason = str(e)
+
+        if p.returncode:
+            log.error("Test %s exitcode was %s. This shouldn't happen", test, p.returncode)
+            failed = True
+            reason = "Exit code was {0}".format(p.returncode)
 
         if sys.version_info > (3,):
             out, err = out.decode('utf-8'), err.decode('utf-8')
 
-        output = ("# {0}\n".format(os.path.basename(test)), out, err)
+        test_head = "# {0}\n".format(os.path.basename(test))
+
+        if failed:
+            output = (test_head, comment(out), comment(err), "\nnot ok - {0}\n".format(reason))
+        else:
+            output = (test_head, out, err)
+
         log.debug("Collected output %s", output)
         outqueue.put(output)
 
@@ -213,7 +238,7 @@ if __name__ == "__main__":
         level = logging.ERROR
 
     logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        format="# !!! %(asctime)s - %(levelname)s - %(message)s",
         level=level,
     )
     log = logging.getLogger(__name__)
