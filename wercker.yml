@@ -3,8 +3,9 @@ py2:
     steps:
         - install-packages:
             packages: libnss3
+
         - script:
-            name: Test python2
+            name: Run tests
             code: |
                 cd tests
                 ./run_all -v
@@ -14,20 +15,46 @@ py3:
     steps:
         - install-packages:
             packages: libnss3
+
         - script:
-            name: Test python3
+            name: Run tests
             code: |
                 cd tests
                 ./run_all -v
 
 
-debian:
+debian-stable:
+    box: debian:stable
+    steps:
+        - install-packages:
+            packages: python libnss3
+
+        - script:
+            name: Run tests
+            code: |
+                cd tests
+                ./run_all -v
+
+debian-testing:
     box: debian:testing
     steps:
         - install-packages:
             packages: python libnss3
+
         - script:
-            name: Test on debian (testing)
+            name: Run tests
+            code: |
+                cd tests
+                ./run_all -v
+
+debian-unstable:
+    box: debian:unstable
+    steps:
+        - install-packages:
+            packages: python libnss3
+
+        - script:
+            name: Run tests
             code: |
                 cd tests
                 ./run_all -v
@@ -37,10 +64,38 @@ fedora:
     steps:
         - script:
             name: Install packages
+            code: dnf install python nss -y
+
+        - script:
+            name: Run tests
+            code: |
+                cd tests
+                ./run_all -v
+
+centos:
+    box: centos:latest
+    steps:
+        - script:
+            name: Install packages
             code: yum install python nss -y
 
         - script:
-            name: Test on fedora (latest)
+            name: Run tests
+            code: |
+                cd tests
+                ./run_all -v
+
+alpine:
+    box: alpine:latest
+    steps:
+        - script:
+            name: Install packages
+            code: |
+                apk update
+                apk add python nss
+
+        - script:
+            name: Run tests
             code: |
                 cd tests
                 ./run_all -v
