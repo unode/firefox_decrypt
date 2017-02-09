@@ -133,4 +133,4 @@ system, including linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
-Current: [![Build Status](https://travis-ci.org/Unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/Unode/firefox_decrypt)
+Status: [![Build Status](https://travis-ci.org/Unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/Unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
