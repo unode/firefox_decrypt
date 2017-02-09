@@ -86,8 +86,13 @@ centos:
                 ./run_all -v
 
 alpine:
-    box: alpine:latest
+    box:
+        id: alpine:latest
+        cmd: /bin/sh
     steps:
+        - internal/docker-push:
+            disable-sync: true
+
         - script:
             name: Install packages
             code: |
