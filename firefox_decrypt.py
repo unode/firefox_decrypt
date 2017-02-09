@@ -246,6 +246,19 @@ class NSSInteraction(object):
 
         LOG.debug("%s: %s", error_name, error_str)
 
+    def get_keyslot(self):
+        """Obtain a pointer to the internal key slot"""
+
+        # NOTE This code used to be:
+        #   return self.NSS.PK11_GetInternalKeySlot()
+        # but on some systems this would segfault.
+        # I don't quite understand the reasons but forcing the output to be
+        # treated as a pointer and passed again as a pointer avoids the segfault
+
+        self.NSS.PK11_GetInternalKeySlot.restype = c_void_p
+        p = self.NSS.PK11_GetInternalKeySlot()
+        return cast(p, c_void_p)
+
     def initialize_libnss(self, profile, password):
         """Initialize the NSS library by authenticating with the user supplied password
         """
@@ -262,10 +275,11 @@ class NSSInteraction(object):
         if password:
             LOG.debug("Retrieving internal key slot")
             p_password = c_char_p(password.encode("utf8"))
-            keyslot = self.NSS.PK11_GetInternalKeySlot()
+            keyslot = self.get_keyslot()
+
             LOG.debug("Internal key slot %s", keyslot)
 
-            if keyslot is None:
+            if not keyslot:
                 LOG.error("Failed to retrieve internal KeySlot")
                 self.handle_error()
                 raise Exit(Exit.FAIL_NSS_KEYSLOT)
