@@ -1,5 +1,9 @@
 #### Changelog
 
+##### 0.6
+- Fix a bug leading to segmentation fault crashes on newer platforms
+- Passing `--version` now displays firefox\_decrypt's version
+
 ##### 0.5.4
 - Search for NSS on additional folders when on Windows
 
