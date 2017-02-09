@@ -30,6 +30,13 @@ from subprocess import Popen, PIPE
 
 try:
     # Python 3
+    from subprocess import DEVNULL
+except ImportError:
+    # Python 2
+    DEVNULL = open(os.devnull, 'w')
+
+try:
+    # Python 3
     from urllib.parse import urlparse
 except ImportError:
     # Python 2
@@ -46,6 +53,30 @@ except ImportError:
 PY3 = sys.version_info.major > 2
 LOG = None
 VERBOSE = False
+
+
+def get_version():
+    """Obtain version information from git if available otherwise use
+    the internal version number
+    """
+    def internal_version():
+        return '.'.join(map(str, __version_info__))
+
+    try:
+        p = Popen(["git", "describe", "--tags"], stdout=PIPE, stderr=DEVNULL)
+    except OSError:
+        return internal_version()
+
+    stdout, stderr = p.communicate()
+
+    if p.returncode:
+        return internal_version()
+    else:
+        return stdout.strip()
+
+
+__version_info__ = (0, 6)
+__version__ = get_version()
 
 
 class NotFoundError(Exception):
@@ -678,6 +709,8 @@ def parse_sys_args():
                         help="List profiles and exit.")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
+    parser.add_argument("--version", action="version", version=__version__,
+                        help="Display version of firefox_decrypt and exit")
 
     args = parser.parse_args()
 
@@ -710,6 +743,7 @@ def main():
 
     setup_logging(args)
 
+    LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
 
     # Check whether pass from passwordstore.org is installed
