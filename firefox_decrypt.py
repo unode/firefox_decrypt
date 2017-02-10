@@ -72,7 +72,7 @@ def get_version():
     if p.returncode:
         return internal_version()
     else:
-        return stdout.strip()
+        return stdout.strip().decode("utf-8")
 
 
 __version_info__ = (0, 6)
