@@ -1,5 +1,8 @@
 #### Changelog
 
+##### 0.6.2
+- Add `--tabular` output
+
 ##### 0.6.1
 - Fix a bug on `--version` affecting primarily Python 3 (@criztovyl)
 

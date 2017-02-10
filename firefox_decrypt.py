@@ -75,7 +75,7 @@ def get_version():
         return stdout.strip().decode("utf-8")
 
 
-__version_info__ = (0, 6, 1)
+__version_info__ = (0, 6, 2)
 __version__ = get_version()
 
 
@@ -366,16 +366,23 @@ class NSSInteraction(object):
 
         return user, passw
 
-    def decrypt_passwords(self, profile, password, export):
+    def decrypt_passwords(self, profile, password, export, tabular):
         """
         Decrypt requested profile using the provided password and print out all
         stored passwords.
         """
 
+        def output_line(line):
+            if PY3:
+                sys.stdout.write(line)
+            else:
+                sys.stdout.write(line.encode("utf8"))
+
         self.initialize_libnss(profile, password)
 
         # Any password in this profile store at all?
         got_password = False
+        header = False
 
         credentials = obtain_credentials(profile)
 
@@ -407,6 +414,12 @@ class NSSInteraction(object):
                 else:
                     to_export[address.netloc][user] = passw
 
+            elif tabular:
+                if header:
+                    output_line(u"Website\tUsername\tPassword}\n".format(host, user, passw))
+
+                output_line(u"'{0}'\t'{1}'\t'{2}'\n".format(host, user, passw))
+
             else:
                 output = (
                     u"\nWebsite:   {0}\n".format(host),
@@ -414,10 +427,7 @@ class NSSInteraction(object):
                     u"Password: '{0}'\n".format(passw),
                 )
                 for line in output:
-                    if PY3:
-                        sys.stdout.write(line)
-                    else:
-                        sys.stdout.write(line.encode("utf8"))
+                    output_line(line)
 
         credentials.done()
         self.NSS.NSS_Shutdown()
@@ -701,6 +711,8 @@ def parse_sys_args():
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
+    parser.add_argument("-t", "--tabular", action="store_true",
+                        help="Output in tabular format")
     parser.add_argument("-n", "--no-interactive", action="store_true",
                         help="Disable interactivity.")
     parser.add_argument("-c", "--choice", nargs=1,
@@ -760,7 +772,7 @@ def main():
     password = ask_password(profile, args.no_interactive)
 
     # And finally decode all passwords
-    nss.decrypt_passwords(profile, password, args.export_pass)
+    nss.decrypt_passwords(profile, password, args.export_pass, args.tabular)
 
 
 if __name__ == "__main__":
