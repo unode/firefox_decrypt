@@ -33,7 +33,7 @@ function skip_if_not_git {
 }
 
 function get_internal_version {
-    echo -e "grep . ${bashtap_org_pwd}/../CHANGELOG.md | head -n 1 | cut -d ' ' -f 2"
+    echo -e "$(grep '\.' ${bashtap_org_pwd}/../CHANGELOG.md | head -n 1 | cut -d ' ' -f 2)"
 }
 
 # Cut out the first two fields, from log as they are date and time (which would make it impossible to test ;D)

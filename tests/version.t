@@ -3,9 +3,11 @@
 
 CMD=$(get_script)
 GIT_VERSION="git describe --tags"
-EXPECTED_VERSION=$(get_internal_version)
+EXPECTED_VERSION="get_internal_version"
 
-skip_if_not_git || diff -u <(${CMD} --version || kill $$) <($GIT_VERSION)
-diff -u <(cd / && ${CMD} --version || kill $$) <($EXPECTED_VERSION)
+[ "x${GIT_VERSION}" != "x" ]
+[ "x${EXPECTED_VERSION}" != "x" ]
+skip_if_not_git || diff -u <(${CMD} --version 2>&1  || kill $$) <($GIT_VERSION)
+diff -u <(cd / && ${CMD} --version 2>&1 || kill $$) <($EXPECTED_VERSION)
 
 # vim: ai sts=4 et sw=4
