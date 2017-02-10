@@ -1,5 +1,8 @@
 #### Changelog
 
+##### 0.6.1
+- Fix a bug on `--version` affecting primarily Python 3 (@criztovyl)
+
 ##### 0.6
 - Fix a bug leading to segmentation fault crashes on newer platforms
 - Passing `--version` now displays firefox\_decrypt's version
