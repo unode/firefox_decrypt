@@ -22,9 +22,8 @@ import logging
 import os
 import sqlite3
 import sys
+import ctypes as ct
 from base64 import b64decode
-from ctypes import c_uint, c_void_p, c_char_p, cast, byref, string_at
-from ctypes import Structure, CDLL
 from getpass import getpass
 from subprocess import Popen, PIPE
 
@@ -119,10 +118,14 @@ class Exit(Exception):
         return "Premature program exit with exit code {0}".format(self.exitcode)
 
 
-class Item(Structure):
+class SECItem(ct.Structure):
     """struct needed to interact with libnss
     """
-    _fields_ = [('type', c_uint), ('data', c_void_p), ('len', c_uint)]
+    _fields_ = [
+        ('type', ct.c_uint),
+        ('data', ct.c_char_p),  # actually: unsigned char *
+        ('len', ct.c_uint),
+    ]
 
 
 class Credentials(object):
@@ -254,7 +257,7 @@ class NSSInteraction(object):
             nsslib = os.path.join(firefox, nssname)
             LOG.debug("Loading NSS library from %s", nsslib)
 
-            self.NSS = CDLL(nsslib)
+            self.NSS = ct.CDLL(nsslib)
 
         except Exception as e:
             LOG.error("Problems opening '%s' required for password decryption", nssname)
@@ -267,8 +270,8 @@ class NSSInteraction(object):
         LOG.debug("Error during a call to NSS library, trying to obtain error info")
 
         error = self.NSS.PORT_GetError()
-        self.NSS.PR_ErrorToString.restype = c_char_p
-        self.NSS.PR_ErrorToName.restype = c_char_p
+        self.NSS.PR_ErrorToString.restype = ct.c_char_p
+        self.NSS.PR_ErrorToName.restype = ct.c_char_p
         error_str = self.NSS.PR_ErrorToString(error)
         error_name = self.NSS.PR_ErrorToName(error)
 
@@ -287,9 +290,9 @@ class NSSInteraction(object):
         # I don't quite understand the reasons but forcing the output to be
         # treated as a pointer and passed again as a pointer avoids the segfault
 
-        self.NSS.PK11_GetInternalKeySlot.restype = c_void_p
+        self.NSS.PK11_GetInternalKeySlot.restype = ct.c_void_p
         p = self.NSS.PK11_GetInternalKeySlot()
-        return cast(p, c_void_p)
+        return ct.cast(p, ct.c_void_p)
 
     def initialize_libnss(self, profile, password):
         """Initialize the NSS library by authenticating with the user supplied password
@@ -306,7 +309,7 @@ class NSSInteraction(object):
 
         if password:
             LOG.debug("Retrieving internal key slot")
-            p_password = c_char_p(password.encode("utf8"))
+            p_password = ct.c_char_p(password.encode("utf8"))
             keyslot = self.get_keyslot()
 
             LOG.debug("Internal key slot %s", keyslot)
@@ -331,19 +334,19 @@ class NSSInteraction(object):
     def decode_entry(self, user, passw):
         """Decrypt one entry in the database
         """
-        username = Item()
-        passwd = Item()
-        outuser = Item()
-        outpass = Item()
+        username = SECItem()
+        passwd = SECItem()
+        outuser = SECItem()
+        outpass = SECItem()
 
-        username.data = cast(c_char_p(b64decode(user)), c_void_p)
+        username.data = ct.cast(ct.c_char_p(b64decode(user)), ct.c_void_p)
         username.len = len(b64decode(user))
-        passwd.data = cast(c_char_p(b64decode(passw)), c_void_p)
+        passwd.data = ct.cast(ct.c_char_p(b64decode(passw)), ct.c_void_p)
         passwd.len = len(b64decode(passw))
 
         LOG.debug("Decrypting username data '%s'", user)
 
-        i = self.NSS.PK11SDR_Decrypt(byref(username), byref(outuser), None)
+        i = self.NSS.PK11SDR_Decrypt(ct.byref(username), ct.byref(outuser), None)
         LOG.debug("Decryption of username returned %s", i)
 
         if i == -1:
@@ -353,7 +356,7 @@ class NSSInteraction(object):
 
         LOG.debug("Decrypting password data '%s'", passw)
 
-        i = self.NSS.PK11SDR_Decrypt(byref(passwd), byref(outpass), None)
+        i = self.NSS.PK11SDR_Decrypt(ct.byref(passwd), ct.byref(outpass), None)
         LOG.debug("Decryption of password returned %s", i)
 
         if i == -1:
@@ -362,8 +365,8 @@ class NSSInteraction(object):
             self.handle_error()
             raise Exit(Exit.UNEXPECTED_END)
 
-        user = string_at(outuser.data, outuser.len)
-        passw = string_at(outpass.data, outpass.len)
+        user = ct.string_at(outuser.data, outuser.len)
+        passw = ct.string_at(outpass.data, outpass.len)
 
         return user, passw
 
