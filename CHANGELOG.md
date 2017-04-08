@@ -1,5 +1,8 @@
 #### Changelog
 
+##### git
+- Fix PK11 slot memory leak
+
 ##### 0.6.2
 - Add `--tabular` output
 

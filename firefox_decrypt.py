@@ -96,6 +96,7 @@ class Exit(Exception):
     FAIL_LOAD_NSS = 11
     FAIL_INIT_NSS = 12
     FAIL_NSS_KEYSLOT = 13
+    FAIL_SHUTDOWN_NSS = 14
     BAD_MASTER_PASSWORD = 15
     NEED_MASTER_PASSWORD = 16
 
@@ -108,7 +109,6 @@ class Exit(Exception):
     NO_SUCH_PROFILE = 32
 
     UNKNOWN_ERROR = 100
-    UNEXPECTED_END = 101
     KEYBOARD_INTERRUPT = 102
 
     def __init__(self, exitcode):
@@ -116,16 +116,6 @@ class Exit(Exception):
 
     def __unicode__(self):
         return "Premature program exit with exit code {0}".format(self.exitcode)
-
-
-class SECItem(ct.Structure):
-    """struct needed to interact with libnss
-    """
-    _fields_ = [
-        ('type', ct.c_uint),
-        ('data', ct.c_char_p),  # actually: unsigned char *
-        ('len', ct.c_uint),
-    ]
 
 
 class Credentials(object):
@@ -201,13 +191,48 @@ class JsonCredentials(Credentials):
                        i["encryptedPassword"], i["encType"])
 
 
-class NSSInteraction(object):
-    """
-    Interact with lib NSS
-    """
+class NSSDecoder(object):
+    class SECItem(ct.Structure):
+        """struct needed to interact with libnss
+        """
+        _fields_ = [
+            ('type', ct.c_uint),
+            ('data', ct.c_char_p),  # actually: unsigned char *
+            ('len', ct.c_uint),
+        ]
+
+    class PK11SlotInfo(ct.Structure):
+        """opaque structure representing a logical PKCS slot
+        """
+
     def __init__(self):
+        # Locate libnss and try loading it
         self.NSS = None
         self.load_libnss()
+
+        SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
+        SECItemPtr = ct.POINTER(self.SECItem)
+
+        self._set_ctypes(ct.c_int, "NSS_Init", ct.c_char_p)
+        self._set_ctypes(ct.c_int, "NSS_Shutdown")
+        self._set_ctypes(SlotInfoPtr, "PK11_GetInternalKeySlot")
+        self._set_ctypes(None, "PK11_FreeSlot", SlotInfoPtr)
+        self._set_ctypes(ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, ct.c_char_p)
+        self._set_ctypes(ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
+        self._set_ctypes(None, "SECITEM_ZfreeItem", SECItemPtr, ct.c_int)
+
+        # for error handling
+        self._set_ctypes(ct.c_int, "PORT_GetError")
+        self._set_ctypes(ct.c_char_p, "PR_ErrorToName", ct.c_int)
+        self._set_ctypes(ct.c_char_p, "PR_ErrorToString", ct.c_int, ct.c_uint32)
+
+    def _set_ctypes(self, restype, name, *argtypes):
+        """Set input/output types on libnss C functions for automatic type casting
+        """
+        res = getattr(self.NSS, name)
+        res.restype = restype
+        res.argtypes = argtypes
+        setattr(self, "_" + name, res)
 
     @staticmethod
     def find_nss(locations, nssname):
@@ -269,108 +294,122 @@ class NSSInteraction(object):
         """
         LOG.debug("Error during a call to NSS library, trying to obtain error info")
 
-        error = self.NSS.PORT_GetError()
-        self.NSS.PR_ErrorToString.restype = ct.c_char_p
-        self.NSS.PR_ErrorToName.restype = ct.c_char_p
-        error_str = self.NSS.PR_ErrorToString(error)
-        error_name = self.NSS.PR_ErrorToName(error)
+        code = self._PORT_GetError()
+        name = self._PR_ErrorToName(code)
+        name = "NULL" if name is None else name.decode("ascii")
+        # 0 is the default language (localization related)
+        text = self._PR_ErrorToString(code, 0)
+        text = text.decode("utf8")
 
-        if PY3:
-            error_name = error_name.decode("utf8")
-            error_str = error_str.decode("utf8")
+        LOG.debug("%s: %s", name, text)
 
-        LOG.debug("%s: %s", error_name, error_str)
+    def decode(self, data64):
+        data = b64decode(data64)
+        inp = self.SECItem(0, data, len(data))
+        out = self.SECItem(0, None, 0)
 
-    def get_keyslot(self):
-        """Obtain a pointer to the internal key slot"""
+        e = self._PK11SDR_Decrypt(inp, out, None)
+        LOG.debug("Decryption of data returned %s", e)
+        try:
+            if e == -1:
+                LOG.error("Password decryption failed. Passwords protected by a Master Password!")
+                self.handle_error()
+                raise Exit(Exit.NEED_MASTER_PASSWORD)
 
-        # NOTE This code used to be:
-        #   return self.NSS.PK11_GetInternalKeySlot()
-        # but on some systems this would segfault.
-        # I don't quite understand the reasons but forcing the output to be
-        # treated as a pointer and passed again as a pointer avoids the segfault
+            res = ct.string_at(out.data, out.len).decode("utf8")
+        finally:
+            # Avoid leaking SECItem
+            self._SECITEM_ZfreeItem(out, 0)
 
-        self.NSS.PK11_GetInternalKeySlot.restype = ct.c_void_p
-        p = self.NSS.PK11_GetInternalKeySlot()
-        return ct.cast(p, ct.c_void_p)
+        return res
 
-    def initialize_libnss(self, profile, password):
-        """Initialize the NSS library by authenticating with the user supplied password
+
+class NSSInteraction(object):
+    """
+    Interact with lib NSS
+    """
+    def __init__(self):
+        self.profile = None
+        self.NSS = NSSDecoder()
+
+    def load_profile(self, profile):
+        """Initialize the NSS library and profile
         """
         LOG.debug("Initializing NSS with profile path '%s'", profile)
+        self.profile = profile
 
-        i = self.NSS.NSS_Init(profile.encode("utf8"))
-        LOG.debug("Initializing NSS returned %s", i)
+        e = self.NSS._NSS_Init(self.profile.encode("utf8"))
+        LOG.debug("Initializing NSS returned %s", e)
 
-        if i != 0:
+        if e != 0:
             LOG.error("Couldn't initialize NSS, maybe '%s' is not a valid profile?", profile)
-            self.handle_error()
+            self.NSS.handle_error()
             raise Exit(Exit.FAIL_INIT_NSS)
 
-        if password:
-            LOG.debug("Retrieving internal key slot")
-            p_password = ct.c_char_p(password.encode("utf8"))
-            keyslot = self.get_keyslot()
+    def authenticate(self, interactive):
+        """Check if the current profile is protected by a master password,
+        prompt the user and unlock the profile.
+        """
+        LOG.debug("Retrieving internal key slot")
+        keyslot = self.NSS._PK11_GetInternalKeySlot()
 
-            LOG.debug("Internal key slot %s", keyslot)
+        LOG.debug("Internal key slot %s", keyslot)
+        if not keyslot:
+            LOG.error("Failed to retrieve internal KeySlot")
+            self.NSS.handle_error()
+            raise Exit(Exit.FAIL_NSS_KEYSLOT)
 
-            if not keyslot:
-                LOG.error("Failed to retrieve internal KeySlot")
-                self.handle_error()
-                raise Exit(Exit.FAIL_NSS_KEYSLOT)
+        try:
+            # NOTE It would be great to be able to check if the profile is
+            # protected by a master password. In C++ one would do:
+            #   if (keyslot->needLogin):
+            # however accessing instance methods is not supported by ctypes.
+            # More on this topic: http://stackoverflow.com/a/19636310
+            # A possibility would be to define such function using cython but
+            # this adds an unecessary runtime dependency
+            password = ask_password(self.profile, interactive)
 
-            LOG.debug("Authenticating with password '%s'", password)
+            if password:
+                LOG.debug("Authenticating with password '%s'", password)
+                e = self.NSS._PK11_CheckUserPassword(keyslot, password.encode("utf8"))
 
-            i = self.NSS.PK11_CheckUserPassword(keyslot, p_password)
-            LOG.debug("Checking user password returned %s", i)
+                LOG.debug("Checking user password returned %s", e)
 
-            if i != 0:
-                LOG.error("Master password is not correct")
-                self.handle_error()
-                raise Exit(Exit.BAD_MASTER_PASSWORD)
-        else:
-            LOG.warn("Attempting decryption with no Master Password")
+                if e != 0:
+                    LOG.error("Master password is not correct")
 
-    def decode_entry(self, user, passw):
+                    self.NSS.handle_error()
+                    raise Exit(Exit.BAD_MASTER_PASSWORD)
+
+            else:
+                LOG.warn("Attempting decryption with no Master Password")
+        finally:
+            # Avoid leaking PK11KeySlot
+            self.NSS._PK11_FreeSlot(keyslot)
+
+    def unload_profile(self):
+        """Shutdown NSS and deactive current profile
+        """
+        e = self.NSS._NSS_Shutdown()
+
+        if e != 0:
+            LOG.error("Couldn't shutdown current NSS profile")
+
+            self.NSS.handle_error()
+            raise Exit(Exit.FAIL_SHUTDOWN_NSS)
+
+    def decode_entry(self, user64, passw64):
         """Decrypt one entry in the database
         """
-        username = SECItem()
-        passwd = SECItem()
-        outuser = SECItem()
-        outpass = SECItem()
+        LOG.debug("Decrypting username data '%s'", user64)
+        user = self.NSS.decode(user64)
 
-        username.data = ct.cast(ct.c_char_p(b64decode(user)), ct.c_void_p)
-        username.len = len(b64decode(user))
-        passwd.data = ct.cast(ct.c_char_p(b64decode(passw)), ct.c_void_p)
-        passwd.len = len(b64decode(passw))
-
-        LOG.debug("Decrypting username data '%s'", user)
-
-        i = self.NSS.PK11SDR_Decrypt(ct.byref(username), ct.byref(outuser), None)
-        LOG.debug("Decryption of username returned %s", i)
-
-        if i == -1:
-            LOG.error("Passwords protected by a Master Password!")
-            self.handle_error()
-            raise Exit(Exit.NEED_MASTER_PASSWORD)
-
-        LOG.debug("Decrypting password data '%s'", passw)
-
-        i = self.NSS.PK11SDR_Decrypt(ct.byref(passwd), ct.byref(outpass), None)
-        LOG.debug("Decryption of password returned %s", i)
-
-        if i == -1:
-            # This shouldn't really happen but failsafe just in case
-            LOG.error("Given Master Password is not correct!")
-            self.handle_error()
-            raise Exit(Exit.UNEXPECTED_END)
-
-        user = ct.string_at(outuser.data, outuser.len)
-        passw = ct.string_at(outpass.data, outpass.len)
+        LOG.debug("Decrypting password data '%s'", passw64)
+        passw = self.NSS.decode(passw64)
 
         return user, passw
 
-    def decrypt_passwords(self, profile, password, export, tabular):
+    def decrypt_passwords(self, export, tabular):
         """
         Decrypt requested profile using the provided password and print out all
         stored passwords.
@@ -382,13 +421,11 @@ class NSSInteraction(object):
             else:
                 sys.stdout.write(line.encode("utf8"))
 
-        self.initialize_libnss(profile, password)
-
         # Any password in this profile store at all?
         got_password = False
         header = False
 
-        credentials = obtain_credentials(profile)
+        credentials = obtain_credentials(self.profile)
 
         LOG.info("Decrypting credentials")
         to_export = {}
@@ -396,12 +433,10 @@ class NSSInteraction(object):
         for host, user, passw, enctype in credentials:
             got_password = True
 
-            # enctype informs if passwords are encrypted and protected by a master password
+            # enctype informs if passwords are encrypted and protected by
+            # a master password
             if enctype:
                 user, passw = self.decode_entry(user, passw)
-
-            user = user.decode("utf8")
-            passw = passw.decode("utf8")
 
             LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, host)
             LOG.debug("Decoding username '%s' and password '%s' for website '%s'", type(user), type(passw), type(host))
@@ -434,7 +469,6 @@ class NSSInteraction(object):
                     output_line(line)
 
         credentials.done()
-        self.NSS.NSS_Shutdown()
 
         if export:
             export_pass(to_export)
@@ -593,7 +627,7 @@ def ask_section(profiles, choice_arg):
     return final_choice
 
 
-def ask_password(profile, no_interactive):
+def ask_password(profile, interactive):
     """
     Prompt for profile password
     """
@@ -601,7 +635,7 @@ def ask_password(profile, no_interactive):
     input_encoding = utf8 if sys.stdin.encoding in (None, 'ascii') else sys.stdin.encoding
     passmsg = "\nMaster Password for profile {}: ".format(profile)
 
-    if sys.stdin.isatty() and not no_interactive:
+    if sys.stdin.isatty() and interactive:
         passwd = getpass(passmsg)
 
     else:
@@ -641,11 +675,11 @@ def read_profiles(basepath, list_profiles):
     return profiles
 
 
-def get_profile(basepath, no_interactive, choice, list_profiles):
+def get_profile(basepath, interactive, choice, list_profiles):
     """
     Select profile to use by either reading profiles.ini or assuming given
     path is already a profile
-    If no_interactive is true, will not try to ask which profile to decrypt.
+    If interactive is false, will not try to ask which profile to decrypt.
     choice contains the choice the user gave us as an CLI arg.
     If list_profiles is true will exits after listing all available profiles.
     """
@@ -666,7 +700,7 @@ def get_profile(basepath, no_interactive, choice, list_profiles):
         else:
             raise
     else:
-        if no_interactive:
+        if not interactive:
 
             sections = get_sections(profiles)
 
@@ -717,7 +751,8 @@ def parse_sys_args():
                         help="Export URL, username and password to pass from passwordstore.org")
     parser.add_argument("-t", "--tabular", action="store_true",
                         help="Output in tabular format")
-    parser.add_argument("-n", "--no-interactive", action="store_true",
+    parser.add_argument("-n", "--no-interactive", dest="interactive",
+                        default=True, action="store_false",
                         help="Disable interactivity.")
     parser.add_argument("-c", "--choice", nargs=1,
                         help="The profile to use (starts with 1). If only one profile, defaults to that.")
@@ -765,18 +800,22 @@ def main():
     # Check whether pass from passwordstore.org is installed
     test_password_store(args.export_pass)
 
+    # Initialize nss before asking the user for input
     nss = NSSInteraction()
 
     basepath = os.path.expanduser(args.profile)
 
     # Read profiles from profiles.ini in profile folder
-    profile = get_profile(basepath, args.no_interactive, args.choice, args.list)
+    profile = get_profile(basepath, args.interactive, args.choice, args.list)
 
-    # Prompt for Master Password
-    password = ask_password(profile, args.no_interactive)
-
-    # And finally decode all passwords
-    nss.decrypt_passwords(profile, password, args.export_pass, args.tabular)
+    # Start NSS for selected profile
+    nss.load_profile(profile)
+    # Check if profile is password protected and prompt for a password
+    nss.authenticate(args.interactive)
+    # Decode all passwords
+    nss.decrypt_passwords(args.export_pass, args.tabular)
+    # And shutdown NSS
+    nss.unload_profile()
 
 
 if __name__ == "__main__":
