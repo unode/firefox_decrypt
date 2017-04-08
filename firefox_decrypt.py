@@ -242,6 +242,7 @@ class NSSInteraction(object):
                 "/opt/local/lib/nss",
                 "/sw/lib/firefox",
                 "/sw/lib/mozilla",
+                "/usr/local/opt/nss/lib",# nss installed with Brew
             )
 
             firefox = self.find_nss(locations, nssname)
