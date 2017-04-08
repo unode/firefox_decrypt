@@ -121,6 +121,10 @@ If the output doesn't help you identify the cause and a solution to the problem 
 If you are on Windows, make sure your Python and Firefox are both 32 or 64 bits.  
 If you mix architectures the code will fail. More information on issue [#8](https://github.com/Unode/firefox_decrypt/issues/8).
 
+##### Darwin/MacOS
+
+If you get the error described in [#14](https://github.com/Unode/firefox_decrypt/issues/14) when loading `libnss3` consider installing `nss` using brew or other package manager.
+
 #### Testing
 
 If you wish to run the testsuite locally chdir into `tests/` and run `./run_all`
