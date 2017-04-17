@@ -453,7 +453,7 @@ class NSSInteraction(object):
                 else:
                     to_export[address.netloc][user] = passw
 
-            elif tabular:
+            if tabular:
                 if header:
                     output_line(u"Website\tUsername\tPassword}\n".format(host, user, passw))
 
@@ -470,11 +470,11 @@ class NSSInteraction(object):
 
         credentials.done()
 
-        if export:
-            export_pass(to_export)
-
         if not got_password:
             LOG.warn("No passwords found in selected profile")
+
+        if export:
+            return to_export
 
 
 def test_password_store(export):
@@ -528,7 +528,7 @@ def obtain_credentials(profile):
     return credentials
 
 
-def export_pass(to_export):
+def export_pass(to_export, prefix):
     """Export given passwords to password store
 
     Format of "to_export" should be:
@@ -540,10 +540,10 @@ def export_pass(to_export):
             # When more than one account exist for the same address, add
             # the login to the password identifier
             if len(to_export[address]) > 1:
-                passname = u"web/{0}/{1}".format(address, user)
+                passname = u"{0}/{1}/{2}".format(prefix, address, user)
 
             else:
-                passname = u"web/{0}".format(address)
+                passname = u"{0}/{1}".format(prefix, address)
 
             LOG.debug("Exporting credentials for '%s'", passname)
 
@@ -749,6 +749,8 @@ def parse_sys_args():
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
+    parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
+                        help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-t", "--tabular", action="store_true",
                         help="Output in tabular format")
     parser.add_argument("-n", "--no-interactive", dest="interactive",
@@ -813,7 +815,11 @@ def main():
     # Check if profile is password protected and prompt for a password
     nss.authenticate(args.interactive)
     # Decode all passwords
-    nss.decrypt_passwords(args.export_pass, args.tabular)
+    to_export = nss.decrypt_passwords(args.export_pass, args.tabular)
+
+    if args.export_pass:
+        export_pass(to_export, args.pass_prefix)
+
     # And shutdown NSS
     nss.unload_profile()
 

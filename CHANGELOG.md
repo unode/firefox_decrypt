@@ -2,6 +2,7 @@
 
 ##### git
 - Fix PK11 slot memory leak
+- Configurable pass-export prefix via `--pass-prefix`
 
 ##### 0.6.2
 - Add `--tabular` output
