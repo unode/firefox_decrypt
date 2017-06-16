@@ -16,8 +16,10 @@
 
 # Based on original work from: www.dumpzilla.org
 
+from __future__ import with_statement #Python 2.5, hope it works with later Python
+
 import argparse
-import json
+import simplejson # couldn't find json in Python 2.5
 import logging
 import os
 import sqlite3
@@ -49,7 +51,7 @@ except ImportError:
     # Python 2
     from ConfigParser import ConfigParser
 
-PY3 = sys.version_info.major > 2
+PY3 = sys.version_info[0] > 2 # sys.version_info.major doesn't work in Python 2.5
 LOG = None
 VERBOSE = False
 
@@ -115,7 +117,7 @@ class Exit(Exception):
         self.exitcode = exitcode
 
     def __unicode__(self):
-        return "Premature program exit with exit code {0}".format(self.exitcode)
+        return "Premature program exit with exit code %s" % (self.exitcode) # str.format doesn't work in Python 2.5
 
 
 class Credentials(object):
@@ -126,7 +128,7 @@ class Credentials(object):
 
         LOG.debug("Database location: %s", self.db)
         if not os.path.isfile(db):
-            raise NotFoundError("ERROR - {0} database not found\n".format(db))
+            raise NotFoundError("ERROR - %s database not found\n" % (db))# str.format doesn't work in Python 2.5
 
         LOG.info("Using %s for credentials.", db)
 
@@ -184,7 +186,7 @@ class JsonCredentials(Credentials):
             try:
                 logins = data["logins"]
             except:
-                raise Exception("Unrecognized format in {0}".format(self.db))
+                raise Exception("Unrecognized format in %s" % (self.db))# str.format doesn't work in Python 2.5
 
             for i in logins:
                 yield (i["hostname"], i["encryptedUsername"],
@@ -284,7 +286,8 @@ class NSSDecoder(object):
 
             self.NSS = ct.CDLL(nsslib)
 
-        except Exception as e:
+        except Exception:#Exception as e doesn't work in Python 2.5
+            t, e = sys.exc_info()[:2]
             LOG.error("Problems opening '%s' required for password decryption", nssname)
             LOG.error("Error was %s", e)
             raise Exit(Exit.FAIL_LOAD_NSS)
@@ -455,15 +458,15 @@ class NSSInteraction(object):
 
             if tabular:
                 if header:
-                    output_line(u"Website\tUsername\tPassword}\n".format(host, user, passw))
+                    output_line(u"Website\tUsername\tPassword}\n")# str.format doesn't work in Python 2.5
 
-                output_line(u"'{0}'\t'{1}'\t'{2}'\n".format(host, user, passw))
+                output_line(u"'%s'\t'%s'\t'%s'\n" % (host, user, passw))# str.format doesn't work in Python 2.5
 
             else:
                 output = (
-                    u"\nWebsite:   {0}\n".format(host),
-                    u"Username: '{0}'\n".format(user),
-                    u"Password: '{0}'\n".format(passw),
+                    u"\nWebsite:   %s\n" % (host),# str.format doesn't work in Python 2.5
+                    u"Username: '%s'\n" % (user),# str.format doesn't work in Python 2.5
+                    u"Password: '%s'\n" % (passw),# str.format doesn't work in Python 2.5
                 )
                 for line in output:
                     output_line(line)
@@ -490,7 +493,8 @@ def test_password_store(export):
 
     try:
         p = Popen(["pass"], stdout=PIPE, stderr=PIPE)
-    except OSError as e:
+    except OSError:#Exception as e doesn't work in Python 2.5
+        t, e = sys.exc_info()[:2]
         if e.errno == 2:
             LOG.error("Password store is not installed and exporting was requested")
             raise Exit(Exit.PASSSTORE_MISSING)
@@ -540,14 +544,14 @@ def export_pass(to_export, prefix):
             # When more than one account exist for the same address, add
             # the login to the password identifier
             if len(to_export[address]) > 1:
-                passname = u"{0}/{1}/{2}".format(prefix, address, user)
+                passname = u"%s/%s/%s" % (prefix, address, user)# str.format doesn't work in Python 2.5
 
             else:
-                passname = u"{0}/{1}".format(prefix, address)
+                passname = u"%s/%s" % (prefix, address)# str.format doesn't work in Python 2.5
 
             LOG.debug("Exporting credentials for '%s'", passname)
 
-            data = u"{0}\n{1}\n".format(passw, user)
+            data = u"%s\n%s\n" % (passw, user)# str.format doesn't work in Python 2.5
 
             LOG.debug("Inserting pass '%s' '%s'", passname, data)
 
@@ -587,7 +591,7 @@ def print_sections(sections, textIOWrapper=sys.stderr):
     Prints all available sections to an textIOWrapper (defaults to sys.stderr)
     """
     for i in sorted(sections):
-        textIOWrapper.write("{0} -> {1}\n".format(i, sections[i]))
+        textIOWrapper.write("%i -> %s\n" % (i, sections[i]))# str.format doesn't work in Python 2.5
     textIOWrapper.flush()
 
 
@@ -633,7 +637,7 @@ def ask_password(profile, interactive):
     """
     utf8 = "UTF-8"
     input_encoding = utf8 if sys.stdin.encoding in (None, 'ascii') else sys.stdin.encoding
-    passmsg = "\nMaster Password for profile {}: ".format(profile)
+    passmsg = "\nMaster Password for profile %s: " % (profile)# str.format doesn't work in Python 2.5
 
     if sys.stdin.isatty() and interactive:
         passwd = getpass(passmsg)
@@ -685,7 +689,8 @@ def get_profile(basepath, interactive, choice, list_profiles):
     """
     try:
         profiles = read_profiles(basepath, list_profiles)
-    except Exit as e:
+    except Exit:#Exception as e doesn't work in Python 2.5
+        t, e = sys.exc_info()[:2]
         if e.exitcode == Exit.MISSING_PROFILEINI:
             LOG.warn("Continuing and assuming '%s' is a profile location", basepath)
             profile = basepath
@@ -739,6 +744,8 @@ def parse_sys_args():
         profile_path = os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox")
     elif os.uname()[0] == "Darwin":
         profile_path = "~/Library/Application Support/Firefox"
+    elif os.uname()[1] == "Nokia-N900":
+        profile_path = "~/.mozilla/microb"#MicroB is the default browser on Nokia N900, just like Python 2.5 is the 'default' version of python
     else:
         profile_path = "~/.mozilla/firefox"
 
@@ -746,7 +753,7 @@ def parse_sys_args():
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
     )
     parser.add_argument("profile", nargs='?', default=profile_path,
-                        help="Path to profile folder (default: {0})".format(profile_path))
+                        help="Path to profile folder (default: %s)" % (profile_path))# str.format doesn't work in Python 2.5
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
     parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
@@ -762,8 +769,9 @@ def parse_sys_args():
                         help="List profiles and exit.")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
-    parser.add_argument("--version", action="version", version=__version__,
-                        help="Display version of firefox_decrypt and exit")
+    #argsparse in Python 2.5 does not support --version
+    #parser.add_argument("--version", action="version", version=__version__,
+    #                    help="Display version of firefox_decrypt and exit")
 
     args = parser.parse_args()
 
@@ -827,8 +835,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:#Exception as e doesn't work in Python 2.5
+        t, e = sys.exc_info()[:2]
         print("Quit.")
         sys.exit(Exit.KEYBOARD_INTERRUPT)
-    except Exit as e:
+    except Exit:#Exception as e doesn't work in Python 2.5
+        t, e = sys.exc_info()[:2]
         sys.exit(e.exitcode)
