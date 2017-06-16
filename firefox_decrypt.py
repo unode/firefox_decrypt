@@ -769,8 +769,9 @@ def parse_sys_args():
                         help="List profiles and exit.")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
-    parser.add_argument("--version", action="version", version=__version__,
-                        help="Display version of firefox_decrypt and exit")
+    #argsparse in Python 2.5 does not support --version
+    #parser.add_argument("--version", action="version", version=__version__,
+    #                    help="Display version of firefox_decrypt and exit")
 
     args = parser.parse_args()
 
