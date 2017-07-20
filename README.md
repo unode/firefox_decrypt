@@ -119,11 +119,11 @@ If the output doesn't help you identify the cause and a solution to the problem 
 ##### Windows
 
 If you are on Windows, make sure your Python and Firefox are both 32 or 64 bits.  
-If you mix architectures the code will fail. More information on issue [#8](https://github.com/Unode/firefox_decrypt/issues/8).
+If you mix architectures the code will fail. More information on issue [#8](https://github.com/unode/firefox_decrypt/issues/8).
 
 ##### Darwin/MacOS
 
-If you get the error described in [#14](https://github.com/Unode/firefox_decrypt/issues/14) when loading `libnss3` consider installing `nss` using brew or other package manager.
+If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3` consider installing `nss` using brew or other package manager.
 
 #### Testing
 
@@ -137,4 +137,4 @@ system, including linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
-Status: [![Build Status](https://travis-ci.org/Unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/Unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
+Status: [![Build Status](https://travis-ci.org/unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
