@@ -17,15 +17,16 @@
 # Based on original work from: www.dumpzilla.org
 
 import argparse
+import csv
+import ctypes as ct
 import json
 import logging
 import os
 import sqlite3
 import sys
-import ctypes as ct
 from base64 import b64decode
 from getpass import getpass
-from subprocess import Popen, PIPE
+from subprocess import PIPE, Popen
 
 try:
     # Python 3
@@ -409,12 +410,11 @@ class NSSInteraction(object):
 
         return user, passw
 
-    def decrypt_passwords(self, export, tabular):
+    def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|"):
         """
         Decrypt requested profile using the provided password and print out all
         stored passwords.
         """
-
         def output_line(line):
             if PY3:
                 sys.stdout.write(line)
@@ -430,7 +430,15 @@ class NSSInteraction(object):
         LOG.info("Decrypting credentials")
         to_export = {}
 
-        for host, user, passw, enctype in credentials:
+        if output_format == "csv":
+            csv_writer = csv.DictWriter(
+                sys.stdout, fieldnames=["url", "user", "password"],
+                delimiter=csv_delimiter, quotechar=csv_quotechar, quoting=csv.QUOTE_ALL
+            )
+            if header:
+                csv_writer.writeheader()
+
+        for url, user, passw, enctype in credentials:
             got_password = True
 
             # enctype informs if passwords are encrypted and protected by
@@ -438,14 +446,14 @@ class NSSInteraction(object):
             if enctype:
                 user, passw = self.decode_entry(user, passw)
 
-            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, host)
-            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", type(user), type(passw), type(host))
+            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, url)
+            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", type(user), type(passw), type(url))
 
             if export:
                 # Keep track of web-address, username and passwords
                 # If more than one username exists for the same web-address
                 # the username will be used as name of the file
-                address = urlparse(host)
+                address = urlparse(url)
 
                 if address.netloc not in to_export:
                     to_export[address.netloc] = {user: passw}
@@ -453,19 +461,16 @@ class NSSInteraction(object):
                 else:
                     to_export[address.netloc][user] = passw
 
-            if tabular:
-                if header:
-                    output_line(u"Website\tUsername\tPassword\n")
-                    header = False
-
-                # We use single quotes as delimiter, as per CSV/TAB standard
-                # quotes should be escaped with quotes
-                escaped = map(lambda x: x.replace("'", "''"), (host, user, passw))
-                output_line(u"'{0}'\t'{1}'\t'{2}'\n".format(*escaped))
+            if output_format == "csv":
+                output = {"url": url, "user": user, "password": passw}
+                if PY3:
+                    csv_writer.writerow(output)
+                else:
+                    csv_writer.writerow({k: v.encode("utf8") for k, v in output.items()})
 
             else:
                 output = (
-                    u"\nWebsite:   {0}\n".format(host),
+                    u"\nWebsite:   {0}\n".format(url),
                     u"Username: '{0}'\n".format(user),
                     u"Password: '{0}'\n".format(passw),
                 )
@@ -749,14 +754,19 @@ def parse_sys_args():
     parser = argparse.ArgumentParser(
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
     )
-    parser.add_argument("profile", nargs='?', default=profile_path,
+    parser.add_argument("profile", nargs="?", default=profile_path,
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
     parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
-    parser.add_argument("-t", "--tabular", action="store_true",
-                        help="Output in tabular format")
+    parser.add_argument("-f", "--format", action="store", choices={"csv", "human"},
+                        default="human", help="Format for the output.")
+    parser.add_argument("-d", "--delimiter", action="store", default=";",
+                        help="The delimiter for csv output")
+    parser.add_argument("-q", "--quotechar", action="store", default='"',
+                        help="The quote char for csv output")
+    parser.add_argument("-t", "--tabular", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("-n", "--no-interactive", dest="interactive",
                         default=True, action="store_false",
                         help="Disable interactivity.")
@@ -770,6 +780,15 @@ def parse_sys_args():
                         help="Display version of firefox_decrypt and exit")
 
     args = parser.parse_args()
+
+    # replace character you can't enter as argument
+    if args.delimiter == "\\t":
+        args.delimiter = "\t"
+
+    if args.tabular:
+        args.format = "csv"
+        args.delimiter = "\t"
+        args.quotechar = "'"
 
     return args
 
@@ -799,6 +818,8 @@ def main():
     args = parse_sys_args()
 
     setup_logging(args)
+    if args.tabular:
+        LOG.warning("--tabular is deprecated. Use `--format csv --delimiter \\t` instead")
 
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
@@ -819,7 +840,12 @@ def main():
     # Check if profile is password protected and prompt for a password
     nss.authenticate(args.interactive)
     # Decode all passwords
-    to_export = nss.decrypt_passwords(args.export_pass, args.tabular)
+    to_export = nss.decrypt_passwords(
+        export=args.export_pass,
+        output_format=args.format,
+        csv_delimiter=args.delimiter,
+        csv_quotechar=args.quotechar,
+    )
 
     if args.export_pass:
         export_pass(to_export, args.pass_prefix)

@@ -3,6 +3,7 @@
 ##### git
 - Fix PK11 slot memory leak
 - Configurable pass-export prefix via `--pass-prefix`
+- Deprecate `--tabular`, add `--format` parameter and support CSV format
 
 ##### 0.6.2
 - Add `--tabular` output
