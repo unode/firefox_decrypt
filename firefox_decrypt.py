@@ -423,7 +423,7 @@ class NSSInteraction(object):
 
         # Any password in this profile store at all?
         got_password = False
-        header = False
+        header = True
 
         credentials = obtain_credentials(self.profile)
 
@@ -455,7 +455,8 @@ class NSSInteraction(object):
 
             if tabular:
                 if header:
-                    output_line(u"Website\tUsername\tPassword}\n".format(host, user, passw))
+                    output_line(u"Website\tUsername\tPassword\n")
+                    header = False
 
                 output_line(u"'{0}'\t'{1}'\t'{2}'\n".format(host, user, passw))
 
