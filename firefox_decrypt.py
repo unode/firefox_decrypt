@@ -612,7 +612,7 @@ def ask_section(profiles, choice_arg):
                 sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
                 print_sections(sections)
                 try:
-                    choice = raw_input("Choice: ")
+                    choice = raw_input()
                 except EOFError:
                     LOG.error("Could not read Choice, got EOF")
                     raise Exit(Exit.READ_GOT_EOF)
