@@ -458,7 +458,10 @@ class NSSInteraction(object):
                     output_line(u"Website\tUsername\tPassword\n")
                     header = False
 
-                output_line(u"'{0}'\t'{1}'\t'{2}'\n".format(host, user, passw))
+                # We use single quotes as delimiter, as per CSV/TAB standard
+                # quotes should be escaped with quotes
+                escaped = map(lambda x: x.replace("'", "''"), (host, user, passw))
+                output_line(u"'{0}'\t'{1}'\t'{2}'\n".format(*escaped))
 
             else:
                 output = (
