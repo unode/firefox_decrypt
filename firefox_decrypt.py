@@ -340,7 +340,7 @@ class NSSInteraction(object):
         LOG.debug("Initializing NSS with profile path '%s'", profile)
         self.profile = profile
 
-        e = self.NSS._NSS_Init(self.profile.encode("utf8"))
+        e = self.NSS._NSS_Init(b"sql:" + self.profile.encode("utf8"))
         LOG.debug("Initializing NSS returned %s", e)
 
         if e != 0:
