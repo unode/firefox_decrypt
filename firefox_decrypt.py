@@ -272,6 +272,7 @@ class NSSDecoder(object):
                 "/sw/lib/firefox",
                 "/sw/lib/mozilla",
                 "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
+                "/opt/pkg/lib/nss", # installed via pkgsrc
             )
 
             firefox = self.find_nss(locations, nssname)
