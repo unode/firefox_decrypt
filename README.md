@@ -18,7 +18,7 @@ Thunderbird, although depending on system configuration, the script may fail to
 locate it there.
 
 Alternatively you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
-libnss3 is part of http://www.mozilla.org/projects/security/pki/nss/
+libnss3 is part of https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
 
 
 #### Usage
