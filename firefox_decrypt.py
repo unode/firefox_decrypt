@@ -75,7 +75,7 @@ def get_version():
         return stdout.strip().decode("utf-8")
 
 
-__version_info__ = (0, 6, 2)
+__version_info__ = (0, 7, 0)
 __version__ = get_version()
 
 

@@ -1,9 +1,14 @@
 #### Changelog
 
 ##### git
+
+##### 0.7.0
 - Fix PK11 slot memory leak
 - Configurable pass-export prefix via `--pass-prefix`
 - Deprecate `--tabular`, add `--format` parameter and support CSV format
+- Fix minor bug with formatting of profile selection prompt
+- Support several default locations for libnss on Darwin
+- Support for password-store in SQLite format starting with Firefox v59
 
 ##### 0.6.2
 - Add `--tabular` output
