@@ -1,6 +1,7 @@
 #### Changelog
 
 ##### git
+- Add compatibility with browserpass via `--pass-compat=browserpass`
 
 ##### 0.7.0
 - Fix PK11 slot memory leak
