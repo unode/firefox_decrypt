@@ -539,7 +539,7 @@ def obtain_credentials(profile):
     return credentials
 
 
-def export_pass(to_export, prefix):
+def export_pass(to_export, prefix, username_prefix):
     """Export given passwords to password store
 
     Format of "to_export" should be:
@@ -558,7 +558,7 @@ def export_pass(to_export, prefix):
 
             LOG.debug("Exporting credentials for '%s'", passname)
 
-            data = u"{0}\n{1}\n".format(passw, user)
+            data = u"{0}\n{1}{2}\n".format(passw, username_prefix, user)
 
             LOG.debug("Inserting pass '%s' '%s'", passname, data)
 
@@ -760,6 +760,9 @@ def parse_sys_args():
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
+    parser.add_argument("--pass-compat", action="store", choices={"default", "browserpass"},
+                        default="default",
+                        help="Export username as is (default), or prefixed with `login:` for compatibility with browserpass")
     parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-f", "--format", action="store", choices={"csv", "human"},
@@ -850,7 +853,8 @@ def main():
     )
 
     if args.export_pass:
-        export_pass(to_export, args.pass_prefix)
+        username_prefix = "login: " if args.pass_compat == "browserpass" else ""
+        export_pass(to_export, args.pass_prefix, username_prefix)
 
     # And shutdown NSS
     nss.unload_profile()
