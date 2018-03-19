@@ -50,12 +50,18 @@ Since version **0.4** it is now also possible to export stored passwords to
 *pass* from http://passwordstore.org . To do so use:
 
 ```
-python firefox_decrypt.py --export-pass --pass-compat browserpass
+python firefox_decrypt.py --export-pass
 ```
 and **all** existing passwords will be exported after the pattern
 `web/<address>[:<port>]` unless multiple credentials exist for the same website
 in which case `/<login>` is appended.
-The username will be stored on a second line, prefixed with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension if `--pass-compat browserpass` is specified. The default without `--pass-compat` is to store just the bare username.
+The username will be stored on a second line.
+
+Alternatively you can use:
+```
+python firefox_decrypt.py --export-pass --pass-compat browserpass
+```
+to prefix the username with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension.
 
 There is currently no way of selectively exporting passwords.
 Exporting overwrites existing passwords without warning. Make sure you have a
