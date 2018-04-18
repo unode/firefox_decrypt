@@ -760,9 +760,10 @@ def parse_sys_args():
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
-    parser.add_argument("--pass-compat", action="store", choices={"default", "browserpass"},
+    parser.add_argument("--pass-compat", action="store",
+                        choices={"default", "browserpass", "username"},
                         default="default",
-                        help="Export username as is (default), or prefixed with `login:` for compatibility with browserpass")
+                        help="Export username as is (default), or with one of the compatiblity modes")
     parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-f", "--format", action="store", choices={"csv", "human"},
@@ -853,7 +854,13 @@ def main():
     )
 
     if args.export_pass:
-        username_prefix = "login: " if args.pass_compat == "browserpass" else ""
+        # List of compatibility modes for username prefixes
+        compat = {
+            "username": "username: ",
+            "browserpass": "login: ",
+        }
+
+        username_prefix = compat.get(args.pass_compat, "")
         export_pass(to_export, args.pass_prefix, username_prefix)
 
     # And shutdown NSS

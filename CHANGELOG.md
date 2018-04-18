@@ -2,6 +2,7 @@
 
 ##### git
 - Add compatibility with browserpass via `--pass-compat=browserpass`
+- Add compatibility mode `username` for a `username:` prefix
 
 ##### 0.7.0
 - Fix PK11 slot memory leak
