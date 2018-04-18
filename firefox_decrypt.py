@@ -488,7 +488,7 @@ class NSSInteraction(object):
             return to_export
 
 
-def test_password_store(export):
+def test_password_store(export, pass_cmd):
     """Check if pass from passwordstore.org is installed
     If it is installed but not initialized, initialize it
     """
@@ -500,7 +500,7 @@ def test_password_store(export):
     LOG.debug("Testing if password store is installed and configured")
 
     try:
-        p = Popen(["pass"], stdout=PIPE, stderr=PIPE)
+        p = Popen([pass_cmd], stdout=PIPE, stderr=PIPE)
     except OSError as e:
         if e.errno == 2:
             LOG.error("Password store is not installed and exporting was requested")
@@ -539,7 +539,7 @@ def obtain_credentials(profile):
     return credentials
 
 
-def export_pass(to_export, prefix, username_prefix):
+def export_pass(to_export, pass_cmd, prefix, username_prefix):
     """Export given passwords to password store
 
     Format of "to_export" should be:
@@ -563,7 +563,7 @@ def export_pass(to_export, prefix, username_prefix):
             LOG.debug("Inserting pass '%s' '%s'", passname, data)
 
             # NOTE --force is used. Existing passwords will be overwritten
-            cmd = ["pass", "insert", "--force", "--multiline", passname]
+            cmd = [pass_cmd, "insert", "--force", "--multiline", passname]
 
             LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
 
@@ -766,6 +766,8 @@ def parse_sys_args():
                         help="Export username as is (default), or with one of the compatiblity modes")
     parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
+    parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
+                        help="Command/path to use when exporting to pass (default: %(default)s)")
     parser.add_argument("-f", "--format", action="store", choices={"csv", "human"},
                         default="human", help="Format for the output.")
     parser.add_argument("-d", "--delimiter", action="store", default=";",
@@ -831,7 +833,7 @@ def main():
     LOG.debug("Parsed commandline arguments: %s", args)
 
     # Check whether pass from passwordstore.org is installed
-    test_password_store(args.export_pass)
+    test_password_store(args.export_pass, args.pass_cmd)
 
     # Initialize nss before asking the user for input
     nss = NSSInteraction()
@@ -861,7 +863,7 @@ def main():
         }
 
         username_prefix = compat.get(args.pass_compat, "")
-        export_pass(to_export, args.pass_prefix, username_prefix)
+        export_pass(to_export, args.pass_cmd, args.pass_prefix, username_prefix)
 
     # And shutdown NSS
     nss.unload_profile()
