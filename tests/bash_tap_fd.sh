@@ -22,18 +22,8 @@ function get_output_data {
     echo -e "$(cat ${bashtap_org_pwd}/test_data/outputs/${1}.output)"
 }
 
-function skip_if_not_git {
-    if [ -d "${bashtap_org_pwd}/../.git" ]; then
-        echo -e "Git folder found. Proceeding"
-        return 0
-    else
-        echo -e "Git folder not found. Skipped"
-        return 1
-    fi
-}
-
 function get_internal_version {
-    echo -e "$(grep '\.' ${bashtap_org_pwd}/../CHANGELOG.md | head -n 1 | cut -d ' ' -f 2)"
+    echo -e "$(grep '##.*\.' ${bashtap_org_pwd}/../CHANGELOG.md | head -n 1 | cut -d ' ' -f 2)"
 }
 
 # Cut out the first two fields, from log as they are date and time (which would make it impossible to test ;D)
