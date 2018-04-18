@@ -546,15 +546,20 @@ def export_pass(to_export, pass_cmd, prefix, username_prefix):
         {"address": {"login": "password", ...}, ...}
     """
     LOG.info("Exporting credentials to password store")
+    if prefix:
+        prefix = u"{0}/".format(prefix)
+
+    LOG.debug("Using pass prefix '%s'", prefix)
+
     for address in to_export:
         for user, passw in to_export[address].items():
             # When more than one account exist for the same address, add
             # the login to the password identifier
             if len(to_export[address]) > 1:
-                passname = u"{0}/{1}/{2}".format(prefix, address, user)
+                passname = u"{0}{1}/{2}".format(prefix, address, user)
 
             else:
-                passname = u"{0}/{1}".format(prefix, address)
+                passname = u"{0}{1}".format(prefix, address)
 
             LOG.debug("Exporting credentials for '%s'", passname)
 
