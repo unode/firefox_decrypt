@@ -1,3 +1,7 @@
+### Firefox Decrypt
+
+[![Build Status](https://travis-ci.org/unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
+
 #### About
 
 Firefox Decrypt is a tool to extract passwords from Firefox/Thunderbird
@@ -144,4 +148,3 @@ system, including linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
-Status: [![Build Status](https://travis-ci.org/unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
