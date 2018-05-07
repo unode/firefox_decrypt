@@ -148,3 +148,6 @@ system, including linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
+#### Spin-off and derived works
+
+* [firepwned](https://github.com/christophetd/firepwned#how-it-works) - check if your passwords have been involved in a known data leak
