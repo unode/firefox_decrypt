@@ -54,11 +54,11 @@ def run_test(testqueue, outqueue, threadname):
             log.exception(e)
             failed = True
             reason = str(e)
-
-        if p.returncode:
-            log.info("Test %s exitcode was %s. Tests shouldn't use exit code. They are expected to exit cleanly and output 'ok' or 'not ok'", test, p.returncode)
-            failed = True
-            reason = "Exit code was {0}".format(p.returncode)
+        else:
+            if p.returncode:
+                log.info("Test %s exitcode was %s. Tests shouldn't use exit code. They are expected to exit cleanly and output 'ok' or 'not ok'", test, p.returncode)
+                failed = True
+                reason = "Exit code was {0}".format(p.returncode)
 
         if sys.version_info > (3,):
             out, err = out.decode('utf-8'), err.decode('utf-8')
