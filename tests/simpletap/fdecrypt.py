@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 from subprocess import check_output, STDOUT
+
+PY3 = sys.version_info.major > 2
 
 
 class Test:
@@ -9,7 +12,13 @@ class Test:
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 
     def run(self, cmd, stdin=None, stderr=STDOUT):
-        return check_output(cmd, stdin=stdin, stderr=stderr)
+        # Ideally we would use encoding='utf8' but this argument is only PY-3.5+
+        output = check_output(cmd, stdin=stdin, stderr=stderr)
+
+        if PY3:
+            output = output.decode("utf8")
+
+        return output
 
     def get_password(self):
         with open(os.path.join(self.get_test_data(), "master_password")) as fh:
