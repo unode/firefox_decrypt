@@ -94,6 +94,7 @@ class Exit(Exception):
     BAD_PROFILEINI = 4
     LOCATION_NO_DIRECTORY = 5
 
+    FAIL_LOCATE_NSS = 10
     FAIL_LOAD_NSS = 11
     FAIL_INIT_NSS = 12
     FAIL_NSS_KEYSLOT = 13
@@ -240,12 +241,25 @@ class NSSDecoder(object):
         """Locate nss is one of the many possible locations
         """
         for loc in locations:
-            if os.path.exists(os.path.join(loc, nssname)):
-                return loc
-
-        LOG.warn("%s not found on any of the default locations for this platform. "
-                 "Attempting to continue nonetheless.", nssname)
-        return ""
+            nsslib = os.path.join(loc, nssname)
+            try:
+                nss = ct.CDLL(nsslib)
+            except OSError as e:
+                if str(e).endswith("No such file or directory"):
+                    continue
+                else:
+                    LOG.error("Problems opening '%s' required for password decryption", nssname)
+                    LOG.error("Error was %s", e)
+                    raise Exit(Exit.FAIL_LOAD_NSS)
+            else:
+                LOG.debug("Loaded NSS library from %s", nsslib)
+                return nss
+        else:
+            LOG.error("Couldn't locate '%s' on your system. "
+                      "If you are seeing this error but can locate '{}' manually "
+                      "on your system, please file a bug report mentioning this "
+                      "location. Thanks!", nssname)
+            raise Exit(Exit.FAIL_LOCATE_NSS)
 
     def load_libnss(self):
         """Load libnss into python using the CDLL interface
@@ -257,10 +271,12 @@ class NSSDecoder(object):
                 r"C:\Program Files (x86)\Mozilla Firefox",
                 r"C:\Program Files\Mozilla Firefox"
             )
-            firefox = self.find_nss(locations, nssname)
 
-            os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
-            LOG.debug("PATH is now %s", os.environ["PATH"])
+            # FIXME this was present in the past adding the location where NSS was found to PATH
+            # I'm not sure why this would be necessary. We don't need to run Firefox...
+            # TODO Test on a Windows machine and see if this works without the PATH change
+            # os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
+            # LOG.debug("PATH is now %s", os.environ["PATH"])
 
         elif os.uname()[0] == "Darwin":
             nssname = "libnss3.dylib"
@@ -275,7 +291,6 @@ class NSSDecoder(object):
                 "/opt/pkg/lib/nss",  # installed via pkgsrc
             )
 
-            firefox = self.find_nss(locations, nssname)
         else:
             nssname = "libnss3.so"
             locations = (
@@ -293,18 +308,8 @@ class NSSDecoder(object):
                 os.path.expanduser("~/.nix-profile/lib"),
             )
 
-            firefox = self.find_nss(locations, nssname)
-
-        try:
-            nsslib = os.path.join(firefox, nssname)
-            LOG.debug("Loading NSS library from %s", nsslib)
-
-            self.NSS = ct.CDLL(nsslib)
-
-        except Exception as e:
-            LOG.error("Problems opening '%s' required for password decryption", nssname)
-            LOG.error("Error was %s", e)
-            raise Exit(Exit.FAIL_LOAD_NSS)
+        # If this succeeds libnss was loaded
+        self.NSS = self.find_nss(locations, nssname)
 
     def handle_error(self):
         """If an error happens in libnss, handle it and print some debug information
