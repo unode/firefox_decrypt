@@ -136,6 +136,7 @@ class Exit(Exception):
     LOCATION_NO_DIRECTORY = 5
     BAD_SECRETS = 6
 
+    FAIL_LOCATE_NSS = 10
     FAIL_LOAD_NSS = 11
     FAIL_INIT_NSS = 12
     FAIL_NSS_KEYSLOT = 13
@@ -283,12 +284,43 @@ class NSSDecoder(object):
         """Locate nss is one of the many possible locations
         """
         for loc in locations:
-            if os.path.exists(os.path.join(loc, nssname)):
-                return loc
+            nsslib = os.path.join(loc, nssname)
+            LOG.debug("Loading NSS library from %s", nsslib)
 
-        LOG.warn("%s not found on any of the default locations for this platform. "
-                 "Attempting to continue nonetheless.", nssname)
-        return ""
+            if os.name == "nt":
+                # On windows in order to find DLLs referenced by nss3.dll
+                # we need to have those locations on PATH
+                os.environ["PATH"] = ';'.join([loc, os.environ["PATH"]])
+                LOG.debug("PATH is now %s", os.environ["PATH"])
+                # However this doesn't seem to work on all setups and needs to be
+                # set before starting python so as a workaround we chdir to
+                # Firefox's nss3.dll location
+                if loc:
+                    workdir = os.getcwd()
+                    os.chdir(loc)
+
+            try:
+                nss = ct.CDLL(nsslib)
+            except OSError as e:
+                if str(e).endswith("No such file or directory"):
+                    continue
+                else:
+                    LOG.error("Problems opening '%s' required for password decryption", nssname)
+                    LOG.error("Error was %s", py2_decode(str(e), SYS_ENCODING))
+                    raise Exit(Exit.FAIL_LOAD_NSS)
+            else:
+                LOG.debug("Loaded NSS library from %s", nsslib)
+                return nss
+            finally:
+                if os.name == "nt" and loc:
+                    # Restore workdir changed above
+                    os.chdir(workdir)
+
+        else:
+            LOG.error("Couldn't find '%s'. If you are seeing this error but "
+                      "can locate '{}' manually on your system, please file "
+                      "a bug report mentioning this location. Thanks!", nssname)
+            raise Exit(Exit.FAIL_LOCATE_NSS)
 
     def load_libnss(self):
         """Load libnss into python using the CDLL interface
@@ -300,18 +332,6 @@ class NSSDecoder(object):
                 r"C:\Program Files (x86)\Mozilla Firefox",
                 r"C:\Program Files\Mozilla Firefox"
             )
-            firefox = self.find_nss(locations, nssname)
-
-            # On windows in order to find DLLs referenced by nss3.dll
-            # we need to have those locations on PATH
-            os.environ["PATH"] = ';'.join([firefox, os.environ["PATH"]])
-            LOG.debug("PATH is now %s", os.environ["PATH"])
-            # However this doesn't seem to work on all setups and needs to be
-            # set before starting python so as a workaround we chdir to
-            # Firefox's nss3.dll location
-            if firefox:
-                workdir = os.getcwd()
-                os.chdir(firefox)
 
         elif os.uname()[0] == "Darwin":
             nssname = "libnss3.dylib"
@@ -326,25 +346,25 @@ class NSSDecoder(object):
                 "/opt/pkg/lib/nss",  # installed via pkgsrc
             )
 
-            firefox = self.find_nss(locations, nssname)
         else:
             nssname = "libnss3.so"
-            firefox = ""  # Current directory or system lib finder
+            locations = (
+                "",  # Current directory or system lib finder
+                "/usr/lib",
+                "/usr/lib32",
+                "/usr/lib64",
+                "/usr/lib/nss",
+                "/usr/lib32/nss",
+                "/usr/lib64/nss",
+                "/usr/local/lib",
+                "/usr/local/lib/nss",
+                "/opt/local/lib",
+                "/opt/local/lib/nss",
+                os.path.expanduser("~/.nix-profile/lib"),
+            )
 
-        try:
-            nsslib = os.path.join(firefox, nssname)
-            LOG.debug("Loading NSS library from %s", nsslib)
-            self.NSS = ct.CDLL(nsslib)
-
-        except Exception as e:
-            LOG.error("Problems opening '%s' required for password decryption", nssname)
-            LOG.error("Error was %s", py2_decode(str(e), SYS_ENCODING))
-            raise Exit(Exit.FAIL_LOAD_NSS)
-
-        finally:
-            if os.name == "nt" and firefox:
-                # Restore workdir changed above
-                os.chdir(workdir)
+        # If this succeeds libnss was loaded
+        self.NSS = self.find_nss(locations, nssname)
 
     def handle_error(self):
         """If an error happens in libnss, handle it and print some debug information
