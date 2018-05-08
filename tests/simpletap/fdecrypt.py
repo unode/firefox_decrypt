@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import os
-from subprocess import check_output
+from subprocess import check_output, STDOUT
 
 
 class Test:
     def __init__(self):
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 
-    def run(self, *args, **kwargs):
-        return check_output(*args, **kwargs)
+    def run(self, cmd, stdin=None, stderr=STDOUT):
+        return check_output(cmd, stdin=stdin, stderr=stderr)
 
     def get_password(self):
         with open(os.path.join(self.get_test_data(), "master_password")) as fh:
