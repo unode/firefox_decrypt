@@ -278,7 +278,22 @@ class NSSDecoder(object):
             firefox = self.find_nss(locations, nssname)
         else:
             nssname = "libnss3.so"
-            firefox = ""  # Current directory or system lib finder
+            locations = (
+                "",  # Current directory or system lib finder
+                "/usr/lib",
+                "/usr/lib32",
+                "/usr/lib64",
+                "/usr/lib/nss",
+                "/usr/lib32/nss",
+                "/usr/lib64/nss",
+                "/usr/local/lib",
+                "/usr/local/lib/nss",
+                "/opt/local/lib",
+                "/opt/local/lib/nss",
+                os.path.expanduser("~/.nix-profile/lib"),
+            )
+
+            firefox = self.find_nss(locations, nssname)
 
         try:
             nsslib = os.path.join(firefox, nssname)
