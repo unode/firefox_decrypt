@@ -184,7 +184,7 @@ class JsonCredentials(Credentials):
 
             try:
                 logins = data["logins"]
-            except:
+            except Exception:
                 raise Exception("Unrecognized format in {0}".format(self.db))
 
             for i in logins:
@@ -272,7 +272,7 @@ class NSSDecoder(object):
                 "/sw/lib/firefox",
                 "/sw/lib/mozilla",
                 "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
-                "/opt/pkg/lib/nss", # installed via pkgsrc
+                "/opt/pkg/lib/nss",  # installed via pkgsrc
             )
 
             firefox = self.find_nss(locations, nssname)
