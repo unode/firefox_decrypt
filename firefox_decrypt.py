@@ -340,11 +340,14 @@ class NSSInteraction(object):
         LOG.debug("Initializing NSS with profile path '%s'", profile)
         self.profile = profile
 
-        e = self.NSS._NSS_Init(b"sql:" + self.profile.encode("utf8"))
+        if PY3:
+            profile = profile.encode("utf8")
+
+        e = self.NSS._NSS_Init(b"sql:" + profile)
         LOG.debug("Initializing NSS returned %s", e)
 
         if e != 0:
-            LOG.error("Couldn't initialize NSS, maybe '%s' is not a valid profile?", profile)
+            LOG.error("Couldn't initialize NSS, maybe '%s' is not a valid profile?", self.profile)
             self.NSS.handle_error()
             raise Exit(Exit.FAIL_INIT_NSS)
 
@@ -717,11 +720,9 @@ def get_profile(basepath, interactive, choice, list_profiles):
             raise
     else:
         if not interactive:
-
             sections = get_sections(profiles)
 
             if choice and len(choice) == 1:
-
                 try:
                     section = sections[(choice[0])]
                 except KeyError:
