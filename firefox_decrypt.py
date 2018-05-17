@@ -337,12 +337,13 @@ class NSSInteraction(object):
     def load_profile(self, profile):
         """Initialize the NSS library and profile
         """
-        LOG.debug("Initializing NSS with profile path '%s'", profile)
         self.profile = profile
+        LOG.debug("Internal profile reference '%s'", profile)
 
         if PY3:
             profile = profile.encode("utf8")
 
+        LOG.debug("Initializing NSS with profile path '%s'", profile)
         e = self.NSS._NSS_Init(b"sql:" + profile)
         LOG.debug("Initializing NSS returned %s", e)
 
