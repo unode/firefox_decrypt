@@ -283,6 +283,8 @@ class NSSDecoder(object):
     def find_nss(locations, nssname):
         """Locate nss is one of the many possible locations
         """
+        fail_errors = []
+
         for loc in locations:
             nsslib = os.path.join(loc, nssname)
             LOG.debug("Loading NSS library from %s", nsslib)
@@ -302,12 +304,7 @@ class NSSDecoder(object):
             try:
                 nss = ct.CDLL(nsslib)
             except OSError as e:
-                if str(e).endswith("No such file or directory"):
-                    continue
-                else:
-                    LOG.error("Problems opening '%s' required for password decryption", nssname)
-                    LOG.error("Error was %s", py2_decode(str(e), SYS_ENCODING))
-                    raise Exit(Exit.FAIL_LOAD_NSS)
+                fail_errors.append((nsslib, str(e)))
             else:
                 LOG.debug("Loaded NSS library from %s", nsslib)
                 return nss
@@ -318,8 +315,14 @@ class NSSDecoder(object):
 
         else:
             LOG.error("Couldn't find '%s'. If you are seeing this error but "
-                      "can locate '{}' manually on your system, please file "
-                      "a bug report mentioning this location. Thanks!", nssname)
+                      "can locate '%s' manually on your system, please file "
+                      "a bug report mentioning this location. Thanks!", nssname, nssname)
+
+            LOG.error("Some of the errors seen are:")
+
+            for target, error in fail_errors:
+                LOG.error("Error when loading %s was %s", target, py2_decode(str(error), SYS_ENCODING))
+
             raise Exit(Exit.FAIL_LOCATE_NSS)
 
     def load_libnss(self):
