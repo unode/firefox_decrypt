@@ -268,8 +268,16 @@ class NSSDecoder(object):
             )
             firefox = self.find_nss(locations, nssname)
 
-            os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
+            # On windows in order to find DLLs referenced by nss3.dll
+            # we need to have those locations on PATH
+            os.environ["PATH"] = ';'.join([firefox, os.environ["PATH"]])
             LOG.debug("PATH is now %s", os.environ["PATH"])
+            # However this doesn't seem to work on all setups and needs to be
+            # set before starting python so as a workaround we chdir to
+            # Firefox's nss3.dll location
+            if firefox:
+                workdir = os.getcwd()
+                os.chdir(firefox)
 
         elif os.uname()[0] == "Darwin":
             nssname = "libnss3.dylib"
@@ -281,7 +289,7 @@ class NSSDecoder(object):
                 "/sw/lib/firefox",
                 "/sw/lib/mozilla",
                 "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
-                "/opt/pkg/lib/nss", # installed via pkgsrc
+                "/opt/pkg/lib/nss",  # installed via pkgsrc
             )
 
             firefox = self.find_nss(locations, nssname)
@@ -292,13 +300,17 @@ class NSSDecoder(object):
         try:
             nsslib = os.path.join(firefox, nssname)
             LOG.debug("Loading NSS library from %s", nsslib)
-
             self.NSS = ct.CDLL(nsslib)
 
         except Exception as e:
             LOG.error("Problems opening '%s' required for password decryption", nssname)
             LOG.error("Error was %s", e)
             raise Exit(Exit.FAIL_LOAD_NSS)
+
+        finally:
+            if os.name == "nt" and firefox:
+                # Restore workdir changed above
+                os.chdir(workdir)
 
     def handle_error(self):
         """If an error happens in libnss, handle it and print some debug information
