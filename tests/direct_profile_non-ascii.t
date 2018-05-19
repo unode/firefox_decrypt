@@ -3,7 +3,7 @@
 
 PASSWD=$(get_password)
 CMD=$(get_script)
-TEST="$(get_test_data)/test_profile_Lшр/"
+TEST="$(get_test_data)/test_profile_firefox_LЮшр/"
 
 
 diff -u <(echo ${PASSWD} | ${CMD} ${TEST} | grep -C1 doesntexist || kill $$) <(get_user_data "doesntexist")
