@@ -54,6 +54,13 @@ PY3 = sys.version_info.major > 2
 LOG = None
 VERBOSE = False
 
+if not PY3 and os.name == "nt":
+    sys.stderr.write("WARNING: You are using Python 2 on Windows. If your "
+                     "passwords include non-alphanumeric characters you "
+                     "will run into problems.\n")
+    sys.stderr.write("WARNING: Python 2 + Windows is no longer supported. "
+                     "Please use Python 3 instead\n")
+
 
 def get_version():
     """Obtain version information from git if available otherwise use
