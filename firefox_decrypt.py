@@ -100,6 +100,7 @@ class Exit(Exception):
     MISSING_SECRETS = 3
     BAD_PROFILEINI = 4
     LOCATION_NO_DIRECTORY = 5
+    BAD_SECRETS = 6
 
     FAIL_LOAD_NSS = 11
     FAIL_INIT_NSS = 12
@@ -191,8 +192,9 @@ class JsonCredentials(Credentials):
 
             try:
                 logins = data["logins"]
-            except:
-                raise Exception("Unrecognized format in {0}".format(self.db))
+            except Exception:
+                LOG.error("Unrecognized format in {0}".format(self.db))
+                raise Exit(Exit.BAD_SECRETS)
 
             for i in logins:
                 yield (i["hostname"], i["encryptedUsername"],
