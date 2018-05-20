@@ -298,6 +298,10 @@ class NSSDecoder(object):
                 # set before starting python so as a workaround we chdir to
                 # Firefox's nss3.dll location
                 if loc:
+                    if not os.path.isdir(loc):
+                        # No point in trying to load from paths that don't exist
+                        continue
+
                     workdir = os.getcwd()
                     os.chdir(loc)
 
