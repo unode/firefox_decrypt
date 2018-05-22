@@ -318,11 +318,18 @@ class NSSDecoder(object):
                     os.chdir(workdir)
 
         else:
-            LOG.error("Couldn't find '%s'. If you are seeing this error but "
-                      "can locate '%s' manually on your system, please file "
-                      "a bug report mentioning this location. Thanks!", nssname, nssname)
+            LOG.error("Couldn't find or load '%s'. This library is essential "
+                      "to interact with your Mozilla profile.", nssname)
+            LOG.error("If you are seeing this error please perform a system-wide "
+                      "search for '%s' and file a bug report indicating any "
+                      "location found. Thanks!", nssname)
+            LOG.error("Alternatively you can try launching firefox_decrypt "
+                      "from the location where you found '%s'. "
+                      "That is 'cd' or 'chdir' to that location and run "
+                      "firefox_decrypt from there.", nssname)
 
-            LOG.error("Some of the errors seen are:")
+            LOG.error("Please also include the following on any bug report. "
+                      "Errors seen while searching/loading NSS:")
 
             for target, error in fail_errors:
                 LOG.error("Error when loading %s was %s", target, py2_decode(str(error), SYS_ENCODING))
