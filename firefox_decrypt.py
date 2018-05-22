@@ -337,7 +337,9 @@ class NSSDecoder(object):
             locations = (
                 "",  # Current directory or system lib finder
                 r"C:\Program Files (x86)\Mozilla Firefox",
-                r"C:\Program Files\Mozilla Firefox"
+                r"C:\Program Files\Mozilla Firefox",
+                r"C:\Program Files (x86)\Nightly",
+                r"C:\Program Files\Nightly",
             )
 
         elif os.uname()[0] == "Darwin":
