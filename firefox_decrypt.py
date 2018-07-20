@@ -236,6 +236,37 @@ class JsonCredentials(Credentials):
                        i["encryptedPassword"], i["encType"])
 
 
+class TextCredentials(Credentials):
+    def __init__(self, profile, version):
+        self._version = version
+        db = os.path.join(profile, "signons{}.txt".format(str(version) if version != 1 else '' ))
+
+        super(TextCredentials, self).__init__(db)
+
+    def __iter__(self):
+        with open(self.db) as fh:
+            LOG.debug("Reading password database in TXT format")
+
+            lines = list(map(lambda x: x.strip('\n').strip('\r'), fh.readlines()))
+
+            file_id = '#2' + chr(ord('b') + self._version)
+            assert lines[0] == file_id
+
+            record_size = 3 + self._version
+
+            i = lines.index('.') + 1
+            while i < len(lines):
+                hostname = lines[i]
+                i += 1
+                while lines[i] != '.':
+                    encryptedUsername = lines[i+1]
+                    encryptedPassword = lines[i+3]
+                    encType = True
+                    yield hostname, encryptedUsername, encryptedPassword, encType
+                    i += record_size
+                i += 1
+
+
 class NSSDecoder(object):
     class SECItem(ct.Structure):
         """struct needed to interact with libnss
@@ -274,7 +305,7 @@ class NSSDecoder(object):
     def _set_ctypes(self, restype, name, *argtypes):
         """Set input/output types on libnss C functions for automatic type casting
         """
-        res = getattr(self.NSS, name)
+        res = getattr(self.NSS if hasattr(self.NSS, name) else self.NSPR, name)
         res.restype = restype
         res.argtypes = argtypes
         setattr(self, "_" + name, res)
@@ -381,6 +412,9 @@ class NSSDecoder(object):
 
         # If this succeeds libnss was loaded
         self.NSS = self.find_nss(locations, nssname)
+
+        if os.name == 'nt' and not (hasattr(self.NSS, "PR_ErrorToName") and hasattr(self.NSS, "PR_ErrorToString")):
+            self.NSPR = self.find_nss(locations, 'nspr4.dll')
 
     def handle_error(self):
         """If an error happens in libnss, handle it and print some debug information
@@ -612,18 +646,23 @@ def test_password_store(export, pass_cmd):
 
 
 def obtain_credentials(profile):
-    """Figure out which of the 2 possible backend credential engines is available
+    """Figure out which of the 3 possible backend credential engines is available
     """
-    try:
-        credentials = JsonCredentials(profile)
-    except NotFoundError:
-        try:
-            credentials = SqliteCredentials(profile)
-        except NotFoundError:
-            LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
-            raise Exit(Exit.MISSING_SECRETS)
+    engines = [
+        (JsonCredentials, {}),
+        (SqliteCredentials, {}),
+        (TextCredentials, {'version': 1}),
+        (TextCredentials, {'version': 2}),
+        (TextCredentials, {'version': 3})
+    ]
 
-    return credentials
+    for credential_type, extra_kwargs in engines:
+        try:
+            return credential_type(profile, **extra_kwargs)
+        except NotFoundError:
+            pass
+    LOG.error("Couldn't find credentials file (logins.json, signons.sqlite or signons[2|3].txt).")
+    raise Exit(Exit.MISSING_SECRETS)
 
 
 def export_pass(to_export, pass_cmd, prefix, username_prefix):
