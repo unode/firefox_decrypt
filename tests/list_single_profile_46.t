@@ -1,16 +1,28 @@
-#!/usr/bin/env bash
-. bash_tap_fd.sh
+#!/usr/bin/env python
 
-PASSWD=$(get_password)
-CMD=$(get_script)
-TEST="$(get_test_data)/test_profile_firefox_46"
+import os
+import unittest
+from simpletap.fdecrypt import lib
 
 
-# The first process substitution is rather complex:
-# As first we're interested in stderr, so 2>&1.
-# get_test_data() generates an absolute path, so we need to make it relative (as the path would be different for each tester)
-# last but not least we're also interested in the exit code.
+class TestSingleProfile20(unittest.TestCase):
+    def test_listing_from_single_profile(self):
+        """list profiles should show the profile list"""
+        test = os.path.join(lib.get_test_data(), "test_profile_firefox_46")
+        cmd = lib.get_script() + ["-l", test]
 
-diff -u <(${CMD} -l ${TEST} 2>&1 | remove_log_date_time | sed "s|${bashtap_org_pwd}/||g"; echo ${PIPESTATUS[0]}) <(get_output_data "list_single_46")
+        expected = lib.get_output_data("list_single_46")
+        expected_exitcode = 2
+
+        output = lib.remove_full_pwd(
+            lib.remove_log_date_time(
+                lib.run_error(cmd, returncode=expected_exitcode)))
+
+        self.assertEqual(output, expected)
+
+
+if __name__ == "__main__":
+    from simpletap import TAPTestRunner
+    unittest.main(testRunner=TAPTestRunner())
 
 # vim: ai sts=4 et sw=4

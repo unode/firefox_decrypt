@@ -2,7 +2,7 @@
 
 import os
 import sys
-from subprocess import check_output, STDOUT
+from subprocess import check_output, STDOUT, CalledProcessError
 
 PY3 = sys.version_info.major > 2
 
@@ -17,6 +17,18 @@ class Test:
 
         if PY3:
             output = output.decode("utf8")
+
+        return output
+
+    def run_error(self, cmd, returncode, stdin=None, stderr=STDOUT):
+        # Ideally we would use encoding='utf8' but this argument is only PY-3.5+
+        try:
+            output = self.run(cmd, stdin, stderr)
+        except CalledProcessError as e:
+            if e.returncode != returncode:
+                raise ValueError("Expected exit code {} but saw {}".format(returncode, e.returncode))
+            else:
+                output = e.output
 
         return output
 
@@ -46,8 +58,15 @@ class Test:
                 if line.startswith("###") and "." in line:
                     return line.strip("#\n ")
 
-    def remove_log_date_time(self):
-        raise NotImplementedError()
+    def remove_full_pwd(self, output):
+        return output.replace(os.path.join(self.testdir, ''), '')
+
+    def remove_log_date_time(self, input):
+        output = []
+        for line in input.split('\n'):
+            output.append(line.split(' ', 2)[-1])
+
+        return '\n'.join(output)
 
 
 lib = Test()
