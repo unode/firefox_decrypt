@@ -148,6 +148,7 @@ system, including linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
-#### Spin-off and derived works
+#### Spin-off, derived and related works
 
 * [firepwned](https://github.com/christophetd/firepwned#how-it-works) - check if your passwords have been involved in a known data leak
+* [FF Password Exporter](https://github.com/kspearrin/ff-password-exporter) - Firefox AddOn for exporting passwords
