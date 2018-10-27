@@ -15,13 +15,13 @@ requested but can be left blank.
 This tool does not try to crack or brute-force the Master Password in any way.
 If the Master Password is not known it will simply fail to recover any data.
 
-This script is written in Python and is compatible with versions 2.7+ and 3.4+. On Windows only Python 3 is supported.
+This script is written in Python and is compatible with versions 2.7+ and 3.4+. On Windows, only Python 3 is supported.
 
-Additionally it requires access to libnss3 which is part of Firefox and
+Additionally, it requires access to libnss3 which is part of Firefox and
 Thunderbird, although depending on system configuration, the script may fail to
 locate it there.
 
-Alternatively you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
+Alternatively, you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
 libnss3 is part of https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
 
 
@@ -43,12 +43,12 @@ script with:
 python firefox_decrypt.py /folder/containing/profiles.ini/
 ```
 
-If you don't want to display all passwords on screen you can use:
+If you don't want to display all the passwords on the screen you can use:
 
 ```
 python firefox_decrypt.py | grep -C2 keyword
 ```
-where keyword is part of the expected output (URL, username, email, password ...)
+where the keyword is part of the expected output (URL, username, email, password ...)
 
 Since version **0.4** it is now also possible to export stored passwords to
 *pass* from http://passwordstore.org . To do so use:
@@ -125,7 +125,7 @@ python firefox_decrypt.py -vvv
 ```
 
 If the output doesn't help you identify the cause and a solution to the problem please file a bug report including the verbose output.  
-**NOTE**: Be aware that your profile password as well as other passwords may be visible in the output so make sure you remove any sensitive data before including it in the bug report.
+**NOTE**: Be aware that your profile password, as well as other passwords, may be visible in the output so make sure you remove any sensitive data before including it in the bug report.
 
 ##### Windows
 
@@ -134,21 +134,21 @@ If you mix architectures the code will fail. More information on issue [#8](http
 
 ##### Darwin/MacOS
 
-If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3` consider installing `nss` using brew or other package manager.
+If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3` consider installing `nss` using brew or other package managers.
 
 #### Testing
 
-If you wish to run the testsuite locally chdir into `tests/` and run `./run_all`
+If you wish to run the test suite locally chdir into `tests/` and run `./run_all`
 
 If any test fails on your system please ensure `libnss` is installed.
 
 If afterwards tests still fail, re-run with `./run_all -v` and file a bug
 report including this output. Please include some information about your
-system, including linux distribution, and version of libnss/firefox.
+system, including Linux distribution, and version of libnss/firefox.
 
 It is much appreciated.
 
-#### Spin-off, derived and related works
+#### Spin-off derived and related works
 
 * [firepwned](https://github.com/christophetd/firepwned#how-it-works) - check if your passwords have been involved in a known data leak
 * [FF Password Exporter](https://github.com/kspearrin/ff-password-exporter) - Firefox AddOn for exporting passwords
