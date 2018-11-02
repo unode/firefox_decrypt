@@ -2,6 +2,9 @@
 
 [![Build Status](https://travis-ci.org/unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
 
+Currently the master branch is unstable.
+If you have problems using it give the latest [release](https://github.com/unode/firefox_decrypt/releases) a try or check open issues for ongoing work.
+
 #### About
 
 Firefox Decrypt is a tool to extract passwords from Firefox/Thunderbird
