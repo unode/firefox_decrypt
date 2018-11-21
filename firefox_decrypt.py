@@ -116,7 +116,7 @@ def get_version():
         return stdout.decode(USR_ENCODING).strip()
 
 
-__version_info__ = (0, 7, 0)
+__version_info__ = (0, 8, 0, "+git")
 __version__ = get_version()
 
 
