@@ -100,7 +100,7 @@ def get_version():
     the internal version number
     """
     def internal_version():
-        return '.'.join(map(str, __version_info__))
+        return '.'.join(map(str, __version_info__[:3])) + ''.join(__version_info__[3:])
 
     try:
         p = Popen(["git", "describe", "--tags"], stdout=PIPE, stderr=DEVNULL)
