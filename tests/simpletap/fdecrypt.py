@@ -2,7 +2,8 @@
 
 import os
 import sys
-from subprocess import check_output, STDOUT, CalledProcessError
+import re
+from subprocess import Popen, PIPE, STDOUT, CalledProcessError
 
 PY3 = sys.version_info.major > 2
 
@@ -13,7 +14,8 @@ class Test:
 
     def run(self, cmd, stdin=None, stderr=STDOUT):
         # Ideally we would use encoding='utf8' but this argument is only PY-3.5+
-        output = check_output(cmd, stdin=stdin, stderr=stderr)
+        p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=stderr)
+        output, _ = p.communicate(stdin)
 
         if PY3:
             output = output.decode("utf8")
@@ -67,6 +69,17 @@ class Test:
             output.append(line.split(' ', 2)[-1])
 
         return '\n'.join(output)
+
+    def grep(self, pattern, output, context=0):
+        r = re.compile(pattern)
+        lines = output.split('\n')
+
+        acc = []
+        for i in range(len(lines)):
+            if r.search(lines[i]):
+                acc.extend(lines[i-context:1+i+context])
+
+        return '\n'.join(acc) + '\n'
 
 
 lib = Test()
