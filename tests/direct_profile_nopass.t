@@ -1,13 +1,50 @@
-#!/usr/bin/env bash
-. bash_tap_fd.sh
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-CMD=$(get_script)
-TEST="$(get_test_data)/test_profile_firefox_nopassword/"
+import os
+import unittest
+from simpletap.fdecrypt import lib
 
 
-diff -u <(echo | ${CMD} ${TEST} | grep -C1 doesntexist || kill $$) <(get_user_data "doesntexist")
-diff -u <(echo | ${CMD} ${TEST} | grep -C1 onemore || kill $$) <(get_user_data "onemore")
-diff -u <(echo | ${CMD} ${TEST} | grep -C1 cömplex || kill $$) <(get_user_data "complex")
-diff -u <(echo | ${CMD} ${TEST} | grep -C1 jãmïe || kill $$) <(get_user_data "jamie")
+class TestDirectProfileNoPass(unittest.TestCase):
+    def setUp(self):
+        self.test = os.path.join(lib.get_test_data(),
+                                 "test_profile_firefox_nopassword")
+
+    def test_nopass(self):
+        """specifying a passwordless profile directly should use the profile
+        """
+        cmd = lib.get_script() + [self.test]
+
+        output = lib.run(cmd)
+
+        key = "doesntexist"
+        expected = lib.get_user_data(key)
+        matches = lib.grep(key, output, context=1)
+
+        self.assertEqual(matches, expected)
+
+        key = "onemore"
+        expected = lib.get_user_data(key)
+        matches = lib.grep(key, output, context=1)
+
+        self.assertEqual(matches, expected)
+
+        key = "cömplex"
+        expected = lib.get_user_data("complex")
+        matches = lib.grep(key, output, context=1)
+
+        self.assertEqual(matches, expected)
+
+        key = "jãmïe"
+        expected = lib.get_user_data("jamie")
+        matches = lib.grep(key, output, context=1)
+
+        self.assertEqual(matches, expected)
+
+
+if __name__ == "__main__":
+    from simpletap import TAPTestRunner
+    unittest.main(testRunner=TAPTestRunner())
 
 # vim: ai sts=4 et sw=4
