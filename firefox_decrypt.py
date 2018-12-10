@@ -22,6 +22,7 @@ import ctypes as ct
 import json
 import logging
 import os
+import select
 import sqlite3
 import sys
 from base64 import b64decode
@@ -676,7 +677,11 @@ def ask_password(profile, interactive):
 
     else:
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
-        passwd = sys.stdin.readline().rstrip("\n")
+        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+            passwd = sys.stdin.readline().rstrip("\n")
+        else:
+            LOG.warn("Master Password not provided, continuing with blank password")
+            passwd = ""
 
     if PY3:
         return passwd
