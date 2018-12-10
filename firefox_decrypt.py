@@ -484,7 +484,7 @@ class NSSInteraction(object):
                     raise Exit(Exit.BAD_MASTER_PASSWORD)
 
             else:
-                LOG.warn("Attempting decryption with no Master Password")
+                LOG.warning("Attempting decryption with no Master Password")
         finally:
             # Avoid leaking PK11KeySlot
             self.NSS._PK11_FreeSlot(keyslot)
@@ -576,7 +576,7 @@ class NSSInteraction(object):
         credentials.done()
 
         if not got_password:
-            LOG.warn("No passwords found in selected profile")
+            LOG.warning("No passwords found in selected profile")
 
         if export:
             return to_export
@@ -754,7 +754,7 @@ def ask_password(profile, interactive):
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
             passwd = sys.stdin.readline().rstrip("\n")
         else:
-            LOG.warn("Master Password not provided, continuing with blank password")
+            LOG.warning("Master Password not provided, continuing with blank password")
             passwd = ""
 
     return py2_decode(passwd)
@@ -770,7 +770,7 @@ def read_profiles(basepath, list_profiles):
     LOG.debug("Reading profiles from %s", profileini)
 
     if not os.path.isfile(profileini):
-        LOG.warn("profile.ini not found in %s", basepath)
+        LOG.warning("profile.ini not found in %s", basepath)
         raise Exit(Exit.MISSING_PROFILEINI)
 
     # Read profiles from Firefox profile folder
@@ -799,7 +799,7 @@ def get_profile(basepath, interactive, choice, list_profiles):
         profiles = read_profiles(basepath, list_profiles)
     except Exit as e:
         if e.exitcode == Exit.MISSING_PROFILEINI:
-            LOG.warn("Continuing and assuming '%s' is a profile location", basepath)
+            LOG.warning("Continuing and assuming '%s' is a profile location", basepath)
             profile = basepath
 
             if list_profiles:
