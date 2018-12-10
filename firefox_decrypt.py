@@ -22,6 +22,7 @@ import ctypes as ct
 import json
 import logging
 import os
+import select
 import sqlite3
 import sys
 from base64 import b64decode
@@ -348,6 +349,12 @@ class NSSDecoder(object):
                 r"C:\Program Files (x86)\Nightly",
                 r"C:\Program Files\Nightly",
             )
+
+            # FIXME this was present in the past adding the location where NSS was found to PATH
+            # I'm not sure why this would be necessary. We don't need to run Firefox...
+            # TODO Test on a Windows machine and see if this works without the PATH change
+            # os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
+            # LOG.debug("PATH is now %s", os.environ["PATH"])
 
         elif os.uname()[0] == "Darwin":
             nssname = "libnss3.dylib"
@@ -744,7 +751,11 @@ def ask_password(profile, interactive):
 
     else:
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
-        passwd = sys.stdin.readline().rstrip("\n")
+        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+            passwd = sys.stdin.readline().rstrip("\n")
+        else:
+            LOG.warn("Master Password not provided, continuing with blank password")
+            passwd = ""
 
     return py2_decode(passwd)
 
@@ -932,6 +943,7 @@ def main():
 
     basepath = os.path.expanduser(args.profile)
 
+    # Read profiles from profiles.ini in profile folder
     profile = get_profile(basepath, args.interactive, args.choice, args.list)
 
     # Start NSS for selected profile

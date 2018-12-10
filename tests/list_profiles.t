@@ -1,11 +1,37 @@
-#!/usr/bin/env bash
-. bash_tap_fd.sh
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-PASSWD=$(get_password)
-CMD=$(get_script)
-TEST="$(get_test_data)"
+import os
+import unittest
+from simpletap.fdecrypt import lib
 
 
-diff -u <(${CMD} -l ${TEST} || kill $$) <(get_output_data "list")
+class TestListProfiles(unittest.TestCase):
+    def test_listing_profiles(self):
+        """list profiles should show the profile list"""
+        cmd = lib.get_script() + ["-l", lib.get_test_data()]
+
+        output = lib.run(cmd)
+        expected = lib.get_output_data("list")
+
+        self.assertEqual(output, expected)
+
+    def test_listing_single_profiles(self):
+        """list profiles should fail if provided a single profile"""
+        test = os.path.join(lib.get_test_data(),
+                            "test_profile_firefox_nopassword")
+        cmd = lib.get_script() + ["-l", test]
+
+        output = lib.run_error(cmd, returncode=2)
+        output = lib.grep("ERROR", output)
+        output = lib.remove_log_date_time(output)
+        expected = lib.get_output_data("list_fail")
+
+        self.assertEqual(output, expected)
+
+
+if __name__ == "__main__":
+    from simpletap import TAPTestRunner
+    unittest.main(testRunner=TAPTestRunner())
 
 # vim: ai sts=4 et sw=4
