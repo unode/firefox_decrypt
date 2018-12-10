@@ -1,6 +1,10 @@
 language: python
+# stop using precise which is still the default
+dist: xenial
+# Using xenial also requires sudo
+sudo: required
 # Use containers instead of VMs
-sudo: false
+#sudo: false
 
 addons:
     apt:
@@ -8,10 +12,8 @@ addons:
         - libnss3
 
 python:
-    - "2.7"
-    - "3.4"
-    - "3.5"
     - "3.6"
+    - "3.7"
 
 script:
     - cd tests && ./run_all -v
