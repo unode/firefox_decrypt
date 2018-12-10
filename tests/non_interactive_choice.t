@@ -5,10 +5,10 @@ import unittest
 from simpletap.fdecrypt import lib
 
 
-class BaseTemplateInteractiveChoice(object):
-    def validate_one(self, userkey, datakey, output):
+class TestNonInteractiveChoice(unittest.TestCase):
+    def validate_one(self, userkey, grepkey, output):
         expected = lib.get_user_data(userkey)
-        matches = lib.grep(datakey, output, context=1)
+        matches = lib.grep(grepkey, output, context=1)
 
         self.assertEqual(matches, expected)
 
@@ -18,35 +18,27 @@ class BaseTemplateInteractiveChoice(object):
         self.validate_one("complex", "cömplex", out)
         self.validate_one("jamie", "jãmïe", out)
 
-
-class TestNonInteractiveChoice20(unittest.TestCase, BaseTemplateInteractiveChoice):
-    def test_firefox(self):
+    def test_firefox_20(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-nc", "1"]
         pwd = lib.get_password()
 
         out = lib.run(cmd, stdin=pwd)
         self.validate(out)
 
-
-class TestNonInteractiveChoice46(unittest.TestCase, BaseTemplateInteractiveChoice):
-    def test_firefox(self):
+    def test_firefox_46(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-nc", "2"]
         pwd = lib.get_password()
 
         out = lib.run(cmd, stdin=pwd)
         self.validate(out)
 
-
-class TestNonInteractiveChoiceNoPass(unittest.TestCase, BaseTemplateInteractiveChoice):
-    def test_firefox(self):
+    def test_firefox_nopass(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-nc", "3"]
 
         out = lib.run(cmd)
         self.validate(out)
 
-
-class TestNonInteractiveChoiceMissing(unittest.TestCase):
-    def test_firefox(self):
+    def test_firefox_missing_choice(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-n"]
 
         out = lib.run_error(cmd, returncode=31)  # 31 is MISSING_CHOICE exit

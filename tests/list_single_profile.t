@@ -6,8 +6,8 @@ import unittest
 from simpletap.fdecrypt import lib
 
 
-class BaseTemplateSingleProfile(object):
-    def test_listing_from_single_profile(self):
+class TestSingleProfile(unittest.TestCase):
+    def listing_from_single_profile(self):
         test = os.path.join(lib.get_test_data(), self.test_profile)
         cmd = lib.get_script() + ["-l", test]
 
@@ -20,17 +20,15 @@ class BaseTemplateSingleProfile(object):
 
         self.assertEqual(output, expected)
 
-
-class TestSingleProfile20(unittest.TestCase, BaseTemplateSingleProfile):
-    def setUp(self):
+    def test_firefox_20(self):
         self.test_profile = "test_profile_firefox_20"
         self.output_data = "list_single_20"
+        self.listing_from_single_profile()
 
-
-class TestSingleProfile46(unittest.TestCase, BaseTemplateSingleProfile):
-    def setUp(self):
+    def test_firefox_46(self):
         self.test_profile = "test_profile_firefox_46"
         self.output_data = "list_single_46"
+        self.listing_from_single_profile()
 
 
 if __name__ == "__main__":

@@ -6,66 +6,47 @@ import unittest
 from simpletap.fdecrypt import lib
 
 
-class BaseTemplateDirectProfile(object):
-    def validate(self, output):
-        key = "doesntexist"
-        expected = lib.get_user_data(key)
-        matches = lib.grep(key, output, context=1)
+class TestDirectProfilePass(unittest.TestCase):
+    def validate_one(self, userkey, grepkey, output):
+        expected = lib.get_user_data(userkey)
+        matches = lib.grep(grepkey, output, context=1)
 
         self.assertEqual(matches, expected)
 
-        key = "onemore"
-        expected = lib.get_user_data(key)
-        matches = lib.grep(key, output, context=1)
+    def validate(self, out):
+        self.validate_one("doesntexist", "doesntexist", out)
+        self.validate_one("onemore", "onemore", out)
+        self.validate_one("complex", "cömplex", out)
+        self.validate_one("jamie", "jãmïe", out)
 
-        self.assertEqual(matches, expected)
-
-        key = "cömplex"
-        expected = lib.get_user_data("complex")
-        matches = lib.grep(key, output, context=1)
-
-        self.assertEqual(matches, expected)
-
-        key = "jãmïe"
-        expected = lib.get_user_data("jamie")
-        matches = lib.grep(key, output, context=1)
-
-        self.assertEqual(matches, expected)
-
-
-class TemplateDirectProfilePass(BaseTemplateDirectProfile):
-    def test_firefox(self):
+    def run_firefox_with_password(self):
         cmd = lib.get_script() + [self.test]
         pwd = lib.get_password()
 
         output = lib.run(cmd, stdin=pwd)
         self.validate(output)
 
-
-class TemplateDirectProfileNoPass(BaseTemplateDirectProfile):
-    def test_firefox(self):
-        cmd = lib.get_script() + [self.test]
+    def run_firefox_nopassword(self):
+        # Must run in non-interactive mode or password prompt will be shown
+        cmd = lib.get_script() + [self.test, "-n"]
 
         output = lib.run(cmd)
         self.validate(output)
 
-
-class TestDirectProfile20(unittest.TestCase, TemplateDirectProfilePass):
-    def setUp(self):
+    def test_firefox_20(self):
         self.test = os.path.join(lib.get_test_data(),
                                  "test_profile_firefox_20")
+        self.run_firefox_with_password()
 
-
-class TestDirectProfile46(unittest.TestCase, TemplateDirectProfilePass):
-    def setUp(self):
+    def test_firefox_46(self):
         self.test = os.path.join(lib.get_test_data(),
                                  "test_profile_firefox_46")
+        self.run_firefox_with_password()
 
-
-class TestDirectProfileNoPass(unittest.TestCase, TemplateDirectProfileNoPass):
-    def setUp(self):
+    def test_firefox_nopass(self):
         self.test = os.path.join(lib.get_test_data(),
                                  "test_profile_firefox_nopassword")
+        self.run_firefox_nopassword()
 
 
 if __name__ == "__main__":
