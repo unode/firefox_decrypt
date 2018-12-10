@@ -2,7 +2,10 @@
 
 [![Build Status](https://travis-ci.org/unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
 
-**Currently the master branch is unstable.**  
+**Currently the master branch is unstable while we migrate to Python 3.**  
+
+If you must use Python 2, please try [version 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0).  
+
 If you have problems using it give the latest [release](https://github.com/unode/firefox_decrypt/releases) a try or check open issues for ongoing work.
 
 #### About
@@ -18,11 +21,11 @@ requested but can be left blank.
 This tool does not try to crack or brute-force the Master Password in any way.
 If the Master Password is not known it will simply fail to recover any data.
 
-This script is written in Python and is compatible with versions 2.7+ and 3.4+. On Windows, only Python 3 is supported.
+This script is written in Python and is compatible with versions ~~2.7+~~ (last is [0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0)) and 3.6+. On Windows, only Python 3 is supported.
 
 Additionally, it requires access to libnss3 which is part of Firefox and
 Thunderbird, although depending on system configuration, the script may fail to
-locate it there.
+locate it there or load an incorrect/incompatible version.
 
 Alternatively, you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
 libnss3 is part of https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
