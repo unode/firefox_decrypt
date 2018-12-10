@@ -47,10 +47,10 @@ class Test:
         return self._get_dir_data("outputs", target)
 
     def get_internal_version(self):
-        with open(os.path.join(self.get_test_data(), "..", "CHANGELOG.md")) as fh:
+        with open(os.path.join(self.testdir, "..", "CHANGELOG.md")) as fh:
             for line in fh:
                 if line.startswith("###") and "." in line:
-                    return line.strip("#\n ")
+                    return line.strip("# ")
 
     def remove_full_pwd(self, output):
         return output.replace(os.path.join(self.testdir, ''), '')
