@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import re
-from subprocess import Popen, PIPE, STDOUT, CalledProcessError
-
-PY3 = sys.version_info.major > 2
+from subprocess import run, CalledProcessError, PIPE, STDOUT
 
 
 class Test:
@@ -13,24 +10,18 @@ class Test:
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 
     def run(self, cmd, stdin=None, stderr=STDOUT):
-        # Ideally we would use encoding='utf8' but this argument is only PY-3.5+
-        p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=stderr)
-        output, _ = p.communicate(stdin)
+        p = run(cmd, input=stdin, stdout=PIPE, stderr=stderr, check=True, encoding="utf8")
 
-        if PY3:
-            output = output.decode("utf8")
-
-        return output
+        return p.stdout
 
     def run_error(self, cmd, returncode, stdin=None, stderr=STDOUT):
-        # Ideally we would use encoding='utf8' but this argument is only PY-3.5+
         try:
-            output = self.run(cmd, stdin, stderr)
+            output = self.run(cmd, stdin=stdin, stderr=stderr)
         except CalledProcessError as e:
             if e.returncode != returncode:
                 raise ValueError("Expected exit code {} but saw {}".format(returncode, e.returncode))
             else:
-                output = e.output
+                output = e.stdout
 
         return output
 
@@ -48,11 +39,11 @@ class Test:
         with open(os.path.join(self.get_test_data(), subdir, "{}.{}".format(target, subdir[:-1]))) as fh:
             return fh.read()
 
-    def get_user_data(self, user):
-        return self._get_dir_data("users", user)
+    def get_user_data(self, target):
+        return self._get_dir_data("users", target)
 
-    def get_output_data(self, output):
-        return self._get_dir_data("outputs", output)
+    def get_output_data(self, target):
+        return self._get_dir_data("outputs", target)
 
     def get_internal_version(self):
         with open(os.path.join(self.get_test_data(), "..", "CHANGELOG.md")) as fh:
