@@ -31,7 +31,7 @@ class Test:
             return fh.read()
 
     def get_script(self):
-        return ["python", "{}/../firefox_decrypt.py".format(self.testdir)]
+        return ["python3", "{}/../firefox_decrypt.py".format(self.testdir)]
 
     def get_test_data(self):
         return os.path.join(self.testdir, "test_data")

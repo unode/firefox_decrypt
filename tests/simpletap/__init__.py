@@ -68,7 +68,7 @@ When saved in a file called ``test.py`` and executed would produce:
 You can also launch simpletap directly from the command line in much the
 same way you do with unittest:
 
-    python -m simpletap test.IntegerArithmeticTestCase
+    python3 -m simpletap test.IntegerArithmeticTestCase
 
 
 For more information refer to the unittest documentation:

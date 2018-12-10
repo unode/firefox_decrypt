@@ -7,7 +7,7 @@ from .runner import TAPTestRunner
 
 
 if sys.argv[0].endswith("__main__.py"):
-    sys.argv[0] = "python -m simpletap"
+    sys.argv[0] = "python3 -m simpletap"
 
 __unittest = True
 
