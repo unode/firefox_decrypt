@@ -9,14 +9,15 @@ class Test:
     def __init__(self):
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 
-    def run(self, cmd, stdin=None, stderr=STDOUT):
-        p = run(cmd, input=stdin, stdout=PIPE, stderr=stderr, check=True, encoding="utf8")
+    def run(self, cmd, stdin=None, stderr=STDOUT, workdir=None):
+        p = run(cmd, check=True, encoding="utf8", cwd=workdir,
+                input=stdin, stdout=PIPE, stderr=stderr)
 
         return p.stdout
 
-    def run_error(self, cmd, returncode, stdin=None, stderr=STDOUT):
+    def run_error(self, cmd, returncode, stdin=None, stderr=STDOUT, workdir=None):
         try:
-            output = self.run(cmd, stdin=stdin, stderr=stderr)
+            output = self.run(cmd, stdin=stdin, stderr=stderr, workdir=workdir)
         except CalledProcessError as e:
             if e.returncode != returncode:
                 raise ValueError("Expected exit code {} but saw {}".format(returncode, e.returncode))
