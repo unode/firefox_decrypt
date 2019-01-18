@@ -54,6 +54,7 @@ except ImportError:
 PY3 = sys.version_info.major > 2
 LOG = None
 VERBOSE = False
+SYS64 = sys.maxsize > 2**32
 
 if not PY3 and os.name == "nt":
     sys.stderr.write("WARNING: You are using Python 2 on Windows. If your "
@@ -342,13 +343,24 @@ class NSSDecoder(object):
         """
         if os.name == "nt":
             nssname = "nss3.dll"
-            locations = (
-                "",  # Current directory or system lib finder
-                r"C:\Program Files (x86)\Mozilla Firefox",
-                r"C:\Program Files\Mozilla Firefox",
-                r"C:\Program Files (x86)\Nightly",
-                r"C:\Program Files\Nightly",
-            )
+            if SYS64:
+                locations = (
+                    "",  # Current directory or system lib finder
+                    r"C:\Program Files\Mozilla Firefox",
+                    r"C:\Program Files\Mozilla Thunderbird",
+                    r"C:\Program Files\Nightly",
+                )
+            else:
+                locations = (
+                    "",  # Current directory or system lib finder
+                    r"C:\Program Files (x86)\Mozilla Firefox",
+                    r"C:\Program Files (x86)\Mozilla Thunderbird",
+                    r"C:\Program Files (x86)\Nightly",
+                    # On windows 32bit these folders can also be 32bit
+                    r"C:\Program Files\Mozilla Firefox",
+                    r"C:\Program Files\Mozilla Thunderbird",
+                    r"C:\Program Files\Nightly",
+                )
 
             # FIXME this was present in the past adding the location where NSS was found to PATH
             # I'm not sure why this would be necessary. We don't need to run Firefox...
@@ -371,20 +383,34 @@ class NSSDecoder(object):
 
         else:
             nssname = "libnss3.so"
-            locations = (
-                "",  # Current directory or system lib finder
-                "/usr/lib",
-                "/usr/lib32",
-                "/usr/lib64",
-                "/usr/lib/nss",
-                "/usr/lib32/nss",
-                "/usr/lib64/nss",
-                "/usr/local/lib",
-                "/usr/local/lib/nss",
-                "/opt/local/lib",
-                "/opt/local/lib/nss",
-                os.path.expanduser("~/.nix-profile/lib"),
-            )
+            if SYS64:
+                locations = (
+                    "",  # Current directory or system lib finder
+                    "/usr/lib64",
+                    "/usr/lib64/nss",
+                    "/usr/lib",
+                    "/usr/lib/nss",
+                    "/usr/local/lib",
+                    "/usr/local/lib/nss",
+                    "/opt/local/lib",
+                    "/opt/local/lib/nss",
+                    os.path.expanduser("~/.nix-profile/lib"),
+                )
+            else:
+                locations = (
+                    "",  # Current directory or system lib finder
+                    "/usr/lib",
+                    "/usr/lib/nss",
+                    "/usr/lib32",
+                    "/usr/lib32/nss",
+                    "/usr/lib64",
+                    "/usr/lib64/nss",
+                    "/usr/local/lib",
+                    "/usr/local/lib/nss",
+                    "/opt/local/lib",
+                    "/opt/local/lib/nss",
+                    os.path.expanduser("~/.nix-profile/lib"),
+                )
 
         # If this succeeds libnss was loaded
         self.NSS = self.find_nss(locations, nssname)
