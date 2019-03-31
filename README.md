@@ -56,6 +56,14 @@ python firefox_decrypt.py | grep -C2 keyword
 ```
 where keyword is part of the expected output (URL, username, email, password ...)
 
+Since version **0.7.0** passwords may be exported in CSV format using the `--format` flag.
+
+```
+python firefox_decrypt.py --format csv
+```
+
+Additionally, `--delimiter` and `--quotechar` flags can specify which characters to use as delimiters and quote characters in the CSV output.
+
 Since version **0.4** it is now also possible to export stored passwords to
 *pass* from http://passwordstore.org . To do so use:
 
