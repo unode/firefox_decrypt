@@ -550,6 +550,7 @@ class NSSInteraction(object):
 
         LOG.info("Decrypting credentials")
         to_export = {}
+        outputs = []
 
         if output_format == "csv":
             csv_writer = csv.DictWriter(
@@ -589,6 +590,9 @@ class NSSInteraction(object):
                     csv_writer.writerow(output)
                 else:
                     csv_writer.writerow({k: v.encode(USR_ENCODING) for k, v in output.items()})
+            elif output_format == "json":
+                output = {"url": url, "user": user, "password": passw}
+                outputs.append(output)
 
             else:
                 output = (
@@ -598,6 +602,9 @@ class NSSInteraction(object):
                 )
                 for line in output:
                     sys.stdout.write(py2_encode(line, USR_ENCODING))
+            if output_format == "json":
+                print(json.dumps(outputs))
+
 
         credentials.done()
 
@@ -895,7 +902,7 @@ def parse_sys_args():
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
                         help="Command/path to use when exporting to pass (default: %(default)s)")
-    parser.add_argument("-f", "--format", action="store", choices={"csv", "human"},
+    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
                         default="human", help="Format for the output.")
     parser.add_argument("-d", "--delimiter", action="store", default=";",
                         help="The delimiter for csv output")
