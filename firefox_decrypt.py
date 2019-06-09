@@ -494,7 +494,7 @@ class NSSInteraction(object):
             # however accessing instance methods is not supported by ctypes.
             # More on this topic: http://stackoverflow.com/a/19636310
             # A possibility would be to define such function using cython but
-            # this adds an unecessary runtime dependency
+            # this adds an unnecessary runtime dependency
             password = ask_password(self.profile, interactive)
 
             if password:
@@ -516,7 +516,7 @@ class NSSInteraction(object):
             self.NSS._PK11_FreeSlot(keyslot)
 
     def unload_profile(self):
-        """Shutdown NSS and deactive current profile
+        """Shutdown NSS and deactivate current profile
         """
         e = self.NSS._NSS_Shutdown()
 
@@ -897,7 +897,7 @@ def parse_sys_args():
     parser.add_argument("--pass-compat", action="store",
                         choices={"default", "browserpass", "username"},
                         default="default",
-                        help="Export username as is (default), or with one of the compatiblity modes")
+                        help="Export username as is (default), or with one of the compatibility modes")
     parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
