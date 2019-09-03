@@ -72,9 +72,9 @@ centos:
             name: Install packages
             code: |
                 yum install -y https://centos7.iuscommunity.org/ius-release.rpm
-                yum install -y python36u nss -y
+                yum install -y python37u nss -y
                 # This python package doesn't actually setup python3 only python3.6
-                ln -s /usr/bin/python3.6 /usr/bin/python3
+                ln -s /usr/bin/python3.7 /usr/bin/python3
 
         - script:
             name: Run tests
