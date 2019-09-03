@@ -66,6 +66,14 @@ environment:
       PYTHON_VERSION: "3.6.x" # currently 3.6.?
       PYTHON_ARCH: "64"
 
+    - PYTHON: "C:\\Python37"
+      PYTHON_VERSION: "3.7.x" # currently 3.7.?
+      PYTHON_ARCH: "32"
+
+    - PYTHON: "C:\\Python37-x64"
+      PYTHON_VERSION: "3.7.x" # currently 3.7.?
+      PYTHON_ARCH: "64"
+
 install:
   # If there is a newer build queued for the same PR, cancel this one.
   # The AppVeyor 'rollout builds' option is supposed to serve the same
