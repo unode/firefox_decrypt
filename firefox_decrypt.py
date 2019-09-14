@@ -561,6 +561,15 @@ class NSSInteraction(object):
             if header:
                 csv_writer.writeheader()
 
+        if output_format == "enpass":
+            enpass_writer = csv.DictWriter(
+                # Create pre-formatted CSV "Logins" type, see https://link.enpass.io/import-see-csv-formats/
+                sys.stdout, fieldnames=["Title", "Username", "Email", "Password", "Website", "TOTP Secret Key", "Custom Field 1", "*Custom Field 2", "Note", "Tags"],
+                lineterminator="\n", delimiter=",",
+                quotechar='"', quoting=csv.QUOTE_ALL,
+            )
+            enpass_writer.writeheader()
+
         for url, user, passw, enctype in credentials:
             got_password = True
 
@@ -590,6 +599,13 @@ class NSSInteraction(object):
                     csv_writer.writerow(output)
                 else:
                     csv_writer.writerow({k: v.encode(USR_ENCODING) for k, v in output.items()})
+            if output_format == "enpass":
+                title = url.replace('https://', '').replace('http://', '').replace('www.', '')
+                output = {"Title": title, "Website": url, "Username": user if not "@" in user else "", "Email": user if "@" in user else "", "Password": passw, "Tags": "firefox_decrypt"}
+                if PY3:
+                    enpass_writer.writerow(output)
+                else:
+                    enpass_writer.writerow({k: v.encode(USR_ENCODING) for k, v in output.items()})
             elif output_format == "json":
                 output = {"url": url, "user": user, "password": passw}
                 outputs.append(output)
@@ -902,7 +918,7 @@ def parse_sys_args():
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
                         help="Command/path to use when exporting to pass (default: %(default)s)")
-    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
+    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json", "enpass"},
                         default="human", help="Format for the output.")
     parser.add_argument("-d", "--delimiter", action="store", default=";",
                         help="The delimiter for csv output")
