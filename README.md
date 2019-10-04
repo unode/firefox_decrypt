@@ -30,6 +30,8 @@ locate it there or load an incorrect/incompatible version.
 Alternatively, you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
 libnss3 is part of https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
 
+If you need to decode passwords from Firefox 3 or older,
+this is not officially supported but a patch exists in [this pull request](https://github.com/unode/firefox_decrypt/pull/36).
 
 #### Usage
 
