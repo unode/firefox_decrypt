@@ -28,6 +28,7 @@ import sys
 from base64 import b64decode
 from getpass import getpass
 from subprocess import PIPE, Popen
+import shutil
 
 try:
     # Python 3
@@ -164,7 +165,7 @@ class Exit(Exception):
         return "Premature program exit with exit code {0}".format(self.exitcode)
 
 
-class Credentials(object):
+class CredentialsFile(object):
     """Base credentials backend manager
     """
     def __init__(self, db):
@@ -176,9 +177,6 @@ class Credentials(object):
 
         LOG.info("Using %s for credentials.", db)
 
-    def __iter__(self):
-        pass
-
     def done(self):
         """Override this method if the credentials subclass needs to do any
         action after interaction
@@ -186,7 +184,7 @@ class Credentials(object):
         pass
 
 
-class SqliteCredentials(Credentials):
+class SqliteCredentials(CredentialsFile):
     """SQLite credentials backend manager
     """
     def __init__(self, profile):
@@ -208,13 +206,13 @@ class SqliteCredentials(Credentials):
     def done(self):
         """Close the sqlite cursor and database connection
         """
-        super(SqliteCredentials, self).done()
-
         self.c.close()
         self.conn.close()
 
+        super(SqliteCredentials, self).done()
 
-class JsonCredentials(Credentials):
+
+class JsonCredentials(CredentialsFile):
     """JSON credentials backend manager
     """
     def __init__(self, profile):
@@ -227,15 +225,108 @@ class JsonCredentials(Credentials):
             LOG.debug("Reading password database in JSON format")
             data = json.load(fh)
 
-            try:
-                logins = data["logins"]
-            except Exception:
-                LOG.error("Unrecognized format in {0}".format(self.db))
-                raise Exit(Exit.BAD_SECRETS)
+        try:
+            logins = data["logins"]
+        except Exception:
+            LOG.error("Unrecognized format in {0}".format(self.db))
+            raise Exit(Exit.BAD_SECRETS)
 
-            for i in logins:
-                yield (i["hostname"], i["encryptedUsername"],
-                       i["encryptedPassword"], i["encType"])
+        for i in logins:
+            yield (i["hostname"], i["encryptedUsername"],
+                   i["encryptedPassword"], i["encType"])
+
+
+class SqliteCredentialsWriter(CredentialsFile):
+    """SQLite credentials backend manager
+    """
+    def __init__(self, profile):
+        db = os.path.join(profile, "signons.sqlite")
+
+        super(SqliteCredentials, self).__init__(db)
+
+        self.conn = sqlite3.connect(db)
+
+    def __enter__(self):
+        self.c = self.conn.cursor()
+        self.c.execute('BEGIN');
+        return self;
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is None:
+            LOG.debug("Committing database changes in %s", self.db)
+            self.c.execute('COMMIT');
+
+        else:
+            LOG.debug("Rolling back database changes in %s", self.db)
+            self.c.execute('ROLLBACK');
+
+        self.c.close()
+
+    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType):
+        self.c.execute("UPDATE moz_logins SET encryptedPassword = ?, encType = ? "
+                       "WHERE hostname = ? AND encryptedUsername = ?",
+                       encryptedPassword, encType, hostname, encryptedUsername)
+
+    def done(self):
+        """Close the database connection
+        """
+        self.conn.close()
+
+        super(SqliteCredentials, self).done()
+
+
+class JsonCredentialsWriter(CredentialsFile):
+    """JSON credentials backend manager
+    """
+    def __init__(self, profile):
+        db = os.path.join(profile, "logins.json")
+
+        super(JsonCredentials, self).__init__(db)
+
+    def __enter__(self):
+        self.pass_list = {}
+        return self;
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass_list = self.pass_list
+        delattr(self, 'pass_list')
+
+        if exc_type is not None:
+            return
+
+        with open(self.db) as fh:
+            LOG.debug("Reading password database in JSON format")
+            data = json.load(fh)
+
+        changed_entries = 0
+
+        for pass_entry in data:
+            try:
+                hostname = data['hostname']
+                encryptedUsername = data['encryptedUsername']
+                encryptedPassword, encType = self.pass_list[(hostname, encryptedUsername)]
+
+                data['encryptedPassword'] = encryptedPassword
+                data['encType'] = encType
+                changed_entries += 1
+
+            except KeyError:
+                continue
+
+        if not changed_entries:
+            return
+
+        # TODO better solution using tempfile
+        tmp_db = self.db + '.tmp'
+        with open(tmp_db, 'wt') as fh:
+            LOG.debug("Writing changed password database in JSON format "
+                      "(%s entries changed)", changed_entries)
+            json.dump(data, fh)
+
+        shutil.move(tmp_db, self.db)
+
+    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType):
+        self.pass_list[(hostname, encryptedUsername)] = (encryptedPassword, encType)
 
 
 class NSSDecoder(object):
