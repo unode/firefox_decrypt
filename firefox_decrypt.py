@@ -242,7 +242,7 @@ class SqliteCredentialsWriter(CredentialsFile):
     def __init__(self, profile):
         db = os.path.join(profile, "signons.sqlite")
 
-        super(SqliteCredentials, self).__init__(db)
+        super(SqliteCredentialsWriter, self).__init__(db)
 
         self.conn = sqlite3.connect(db)
 
@@ -292,7 +292,7 @@ class JsonCredentialsWriter(CredentialsFile):
     def __init__(self, profile):
         db = os.path.join(profile, "logins.json")
 
-        super(JsonCredentials, self).__init__(db)
+        super(JsonCredentialsWriter, self).__init__(db)
 
     def __enter__(self):
         self.pass_list = {}
