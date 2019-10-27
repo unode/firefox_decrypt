@@ -712,7 +712,7 @@ class NSSInteraction(object):
                     password_entries = list({ k: v.decode(USR_ENCODING) for k, v in entry } for entry in rdr)
 
                 else:
-                    password_entries = list(rdr)
+                    password_entries = list(entry for entry in rdr)
 
         elif input_format == 'json':
             with open_binary_input(source) as fd:
