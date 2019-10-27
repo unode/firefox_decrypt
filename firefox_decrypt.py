@@ -29,6 +29,7 @@ from base64 import b64decode
 from getpass import getpass
 from subprocess import PIPE, Popen
 import shutil
+import contextlib
 
 try:
     # Python 3
@@ -262,7 +263,7 @@ class SqliteCredentialsWriter(CredentialsFile):
 
         self.c.close()
 
-    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
+    def update_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
         if encType is None:
             self.c.execute("UPDATE moz_logins SET encryptedPassword = ? "
                            "WHERE hostname = ? AND encryptedUsername = ?",
@@ -344,7 +345,7 @@ class JsonCredentialsWriter(CredentialsFile):
 
         shutil.move(tmp_db, self.db)
 
-    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
+    def update_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
         self.pass_list[(hostname, encryptedUsername)] = (encryptedPassword, encType)
 
 
@@ -676,6 +677,58 @@ class NSSInteraction(object):
 
         return user64, passw64
 
+    def update_passwords(self, source, input_format="auto", csv_delimiter=";", csv_quotechar="|"):
+        """
+        Update passwords in the requested profile from provided data file.
+        """
+        header = True
+
+        source = source or '-'
+
+        if input_format == 'auto':
+            if source == '-':
+                raise ValueError("Cannot auto-detect format on stdin")
+
+            _, extension = os.path.splitext(source)
+            extension = extension.lower()
+
+            if extension == '.csv':
+                input_format = 'csv'
+
+            else: # elif extension == '.json'
+                input_format = 'json'
+
+        if input_format == 'csv':
+            with open_binary_input(source) as fd:
+                rdr = csv.DictReader(fd, fieldnames=['url', 'user', 'password'],
+                        lineterminator="\n", delimiter=csv_delimiter,
+                        quotechar=csv_quotechar, quoting=csv.QUOTE_ALL)
+
+                if header:
+                    # skip header
+                    next(rdr, None)
+
+                if PY3:
+                    password_entries = list({ k: v.decode(USR_ENCODING) for k, v in entry } for entry in rdr)
+
+                else:
+                    password_entries = list(rdr)
+
+        elif input_format == 'json':
+            with open_binary_input(source) as fd:
+                password_entries = json.load(fd)
+
+        else:
+            raise ValueError("Invalid input format: {}".format(input_format))
+
+        LOG.info("Updating credentials")
+        cred_writer = create_credentials_writer(self.profile)
+
+        with cred_writer:
+            for password_entry in password_entries:
+                encuser, encpassword = self.encode_entry(password_entry['user'], password_entry['password'])
+                cred_writer.update_password(password_entry['url'], encuser, encpassword)
+
     def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|",
                           pretty=False):
         """
@@ -796,6 +849,40 @@ def test_password_store(export, pass_cmd):
             LOG.error("Unknown error happened when running 'pass'.")
             LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
             raise Exit(Exit.UNKNOWN_ERROR)
+
+
+@contextlib.contextmanager
+def open_binary_input(filename=None):
+    """Open binary input stream. If filename is missing or equals to "-",
+    return standard input handle.
+    """
+    if not filename or filename == '-':
+        res = sys.stdin
+
+        if PY3:
+            # unwrap TextIOWrapper to obtain underlying binary buffered stream
+            res = res.buffer
+
+        yield res
+
+    else:
+        with open(filename, 'rb') as fd:
+            yield fd
+
+
+def create_credentials_writer(profile):
+    """Create a credentials writer object for the credential engine used in the profile
+    """
+    try:
+        cred_writer = JsonCredentialsWriter(profile)
+    except NotFoundError:
+        try:
+            cred_writer = SqliteCredentialsWriter(profile)
+        except NotFoundError:
+            LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
+            raise Exit(Exit.MISSING_SECRETS)
+
+    return cred_writer
 
 
 def obtain_credentials(profile):
