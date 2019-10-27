@@ -262,10 +262,21 @@ class SqliteCredentialsWriter(CredentialsFile):
 
         self.c.close()
 
-    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType):
-        self.c.execute("UPDATE moz_logins SET encryptedPassword = ?, encType = ? "
-                       "WHERE hostname = ? AND encryptedUsername = ?",
-                       encryptedPassword, encType, hostname, encryptedUsername)
+    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
+        if encType is None:
+            self.c.execute("UPDATE moz_logins SET encryptedPassword = ? "
+                           "WHERE hostname = ? AND encryptedUsername = ?",
+                           encryptedPassword, hostname, encryptedUsername)
+
+        else:
+            self.c.execute("UPDATE moz_logins SET encryptedPassword = ?, encType = ? "
+                           "WHERE hostname = ? AND encryptedUsername = ?",
+                           encryptedPassword, encType, hostname, encryptedUsername)
+
+        if self.c.rowcount == 0:
+            LOG.warn("The credentials for host name '%s', encrypted user name '%s' "
+                     "were not found in the database, the password was not updated",
+                     hostname, encryptedUsername)
 
     def done(self):
         """Close the database connection
@@ -307,11 +318,19 @@ class JsonCredentialsWriter(CredentialsFile):
                 encryptedPassword, encType = self.pass_list[(hostname, encryptedUsername)]
 
                 data['encryptedPassword'] = encryptedPassword
-                data['encType'] = encType
+                if encType is not None:
+                    data['encType'] = encType
+
                 changed_entries += 1
 
             except KeyError:
-                continue
+                LOG.warn("The credentials for host name '%s', encrypted user name '%s' "
+                         "were not found in the database, the password was not updated",
+                         hostname, encryptedUsername)
+
+        if len(self.pass_list) > changed_entries:
+            LOG.warn("failed to update %s of %s entries",
+                    len(self.pass_list) - changed_entries, len(self.pass_list))
 
         if not changed_entries:
             return
@@ -325,7 +344,7 @@ class JsonCredentialsWriter(CredentialsFile):
 
         shutil.move(tmp_db, self.db)
 
-    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType):
+    def set_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
         self.pass_list[(hostname, encryptedUsername)] = (encryptedPassword, encType)
 
 
