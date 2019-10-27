@@ -376,6 +376,7 @@ class NSSDecoder(object):
         self._set_ctypes(None, "PK11_FreeSlot", SlotInfoPtr)
         self._set_ctypes(ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, ct.c_char_p)
         self._set_ctypes(ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
+        self._set_ctypes(ct.c_int, "PK11SDR_Encrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
         self._set_ctypes(None, "SECITEM_ZfreeItem", SECItemPtr, ct.c_int)
 
         # for error handling
@@ -559,6 +560,22 @@ class NSSDecoder(object):
 
         return res
 
+    def encode(self, text):
+        binary = text.encode(LIB_ENCODING)
+        inp = self.SECItem(0, binary, len(binary))
+        out = self.SECItem(0, None, 0)
+
+        e = self._PK11SDR_Encrypt(inp, out, None)
+        LOG.debug("Encryption of data returned %s", e)
+
+        data = ct.string_at(out.data, out.len)
+        res = b64encode(data)
+
+        # Avoid leaking SECItem
+        self._SECITEM_ZfreeItem(out, 0)
+
+        return res
+
 
 class NSSInteraction(object):
     """
@@ -620,7 +637,8 @@ class NSSInteraction(object):
                     raise Exit(Exit.BAD_MASTER_PASSWORD)
 
             else:
-                LOG.warning("Attempting decryption with no Master Password")
+                LOG.warning("Attempting to work with the database with no Master Password")
+
         finally:
             # Avoid leaking PK11KeySlot
             self.NSS._PK11_FreeSlot(keyslot)
@@ -646,6 +664,17 @@ class NSSInteraction(object):
         passw = self.NSS.decode(passw64)
 
         return user, passw
+
+    def encode_entry(self, user, passw):
+        """Decrypt one entry in the database
+        """
+        LOG.debug("Encrypting username '%s'", user)
+        user64 = self.NSS.decode(user)
+
+        LOG.debug("Encrypting password (hidden) for '%s'", user)
+        passw64 = self.NSS.decode(passw)
+
+        return user64, passw64
 
     def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|",
                           pretty=False):
