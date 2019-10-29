@@ -602,8 +602,9 @@ class NSSInteraction(object):
                 )
                 for line in output:
                     sys.stdout.write(py2_encode(line, USR_ENCODING))
-            if output_format == "json":
-                print(json.dumps(outputs))
+
+        if output_format == "json":
+            print(json.dumps(outputs))
 
 
         credentials.done()
@@ -902,7 +903,7 @@ def parse_sys_args():
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
                         help="Command/path to use when exporting to pass (default: %(default)s)")
-    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
+    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json", "auto"},
                         default="human", help="Format for the output.")
     parser.add_argument("-d", "--delimiter", action="store", default=";",
                         help="The delimiter for csv output")
@@ -931,6 +932,12 @@ def parse_sys_args():
         args.format = "csv"
         args.delimiter = "\t"
         args.quotechar = "'"
+
+    if args.format == "auto" and not args.update_from:
+        raise argparse.ArgumentError("--format", "`--format auto' can be used with `--update-from ...' only")
+
+    elif args.format == "human" and args.update_from:
+        raise argparse.ArgumentError("--format", "`--format human' cannot be used with `--update-from ...'")
 
     return args
 
