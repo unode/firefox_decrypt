@@ -537,7 +537,8 @@ class NSSInteraction(object):
 
         return user, passw
 
-    def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|"):
+    def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|",
+                          pretty=False):
         """
         Decrypt requested profile using the provided password and print out all
         stored passwords.
@@ -604,7 +605,13 @@ class NSSInteraction(object):
                     sys.stdout.write(py2_encode(line, USR_ENCODING))
 
         if output_format == "json":
-            print(json.dumps(outputs))
+            if pretty:
+                output_str = json.dumps(outputs, indent=2)
+
+            else:
+                output_str = json.dumps(outputs)
+
+            print(output_str)
 
 
         credentials.done()
@@ -903,7 +910,7 @@ def parse_sys_args():
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
                         help="Command/path to use when exporting to pass (default: %(default)s)")
-    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json", "auto"},
+    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
                         default="human", help="Format for the output.")
     parser.add_argument("-d", "--delimiter", action="store", default=";",
                         help="The delimiter for csv output")
@@ -917,6 +924,7 @@ def parse_sys_args():
                         help="The profile to use (starts with 1). If only one profile, defaults to that.")
     parser.add_argument("-l", "--list", action="store_true",
                         help="List profiles and exit.")
+    parser.add_argument("--pretty", action="store_true", help="Pretty-print the output JSON")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
     parser.add_argument("--version", action="version", version=__version__,
@@ -932,12 +940,6 @@ def parse_sys_args():
         args.format = "csv"
         args.delimiter = "\t"
         args.quotechar = "'"
-
-    if args.format == "auto" and not args.update_from:
-        raise argparse.ArgumentError("--format", "`--format auto' can be used with `--update-from ...' only")
-
-    elif args.format == "human" and args.update_from:
-        raise argparse.ArgumentError("--format", "`--format human' cannot be used with `--update-from ...'")
 
     return args
 
@@ -996,6 +998,7 @@ def main():
         output_format=args.format,
         csv_delimiter=args.delimiter,
         csv_quotechar=args.quotechar,
+        pretty=args.pretty,
     )
 
     if args.export_pass:
