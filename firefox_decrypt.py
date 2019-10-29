@@ -1154,6 +1154,7 @@ def parse_sys_args():
     parser.add_argument("-u", "--update-from", action="store", metavar="INPUT_FILE",
                         help="Update passwords in database from CSV or JSON instead of exporting"
                              " (the file format is the same as the appropriate export format)")
+    parser.add_argument("--pretty", action="store_true", help="Pretty-print the output JSON")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
     parser.add_argument("--version", action="version", version=__version__,
@@ -1238,7 +1239,7 @@ def main():
             output_format=args.format,
             csv_delimiter=args.delimiter,
             csv_quotechar=args.quotechar,
-            pretty=args.pretty,
+            pretty=args.pretty
         )
 
         if args.export_pass:
