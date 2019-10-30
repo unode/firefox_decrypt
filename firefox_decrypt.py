@@ -372,9 +372,17 @@ class NSSDecoder(object):
         """
         _fields_ = [
             ('type', ct.c_uint),
-            ('data', ct.c_char_p),  # actually: unsigned char *
+            ('data', ct.POINTER(ct.c_char)),  # actually: unsigned char *
             ('len', ct.c_uint),
         ]
+
+        @classmethod
+        def new(cls, data=None):
+            if data is None:
+                return cls(0, None, 0)
+
+            else:
+                return cls(0, ct.cast(data, ct.POINTER(ct.c_char)), len(data))
 
     class PK11SlotInfo(ct.Structure):
         """opaque structure representing a logical PKCS slot
@@ -560,8 +568,8 @@ class NSSDecoder(object):
 
     def decode(self, data64):
         data = b64decode(data64)
-        inp = self.SECItem(0, data, len(data))
-        out = self.SECItem(0, None, 0)
+        inp = self.SECItem.new(data)
+        out = self.SECItem.new()
 
         e = self._PK11SDR_Decrypt(inp, out, None)
         LOG.debug("Decryption of data returned %s", e)
@@ -581,11 +589,11 @@ class NSSDecoder(object):
     def encode(self, text):
         # keyid = F8000000000000000000000000000001
         keyid_bin = b'\xF8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01'
-        keyid = self.SECItem(0, keyid_bin, len(keyid_bin))
+        keyid = self.SECItem.new(keyid_bin)
 
         binary = text.encode(LIB_ENCODING)
-        inp = self.SECItem(0, binary, len(binary))
-        out = self.SECItem(0, None, 0)
+        inp = self.SECItem.new(binary)
+        out = self.SECItem.new()
 
         e = self._PK11SDR_Encrypt(keyid, inp, out, None)
         LOG.debug("Encryption of data returned %s", e)
@@ -695,6 +703,7 @@ class NSSInteraction(object):
         """
         LOG.debug("Encrypting username '%s'", user)
         user64 = self.NSS.encode(user)
+        dec_back = self.NSS.decode(user64)
 
         LOG.debug("Encrypting password (hidden) for '%s'", user)
         passw64 = self.NSS.encode(passw)
