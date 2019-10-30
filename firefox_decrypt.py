@@ -25,7 +25,7 @@ import os
 import select
 import sqlite3
 import sys
-from base64 import b64decode
+from base64 import b64decode, b64encode
 from getpass import getpass
 from subprocess import PIPE, Popen
 import shutil
@@ -57,6 +57,13 @@ PY3 = sys.version_info.major > 2
 LOG = None
 VERBOSE = False
 SYS64 = sys.maxsize > 2**32
+
+# Interactive session
+GETPASS_INTERACTIVE = 0
+# Read password from stdin
+GETPASS_STDIN = 1
+# Read no passwords at all
+GETPASS_NONE = 2
 
 if not PY3 and os.name == "nt":
     sys.stderr.write("WARNING: You are using Python 2 on Windows. If your "
@@ -275,9 +282,9 @@ class SqliteCredentialsWriter(CredentialsFile):
                            encryptedPassword, encType, hostname, encryptedUsername)
 
         if self.c.rowcount == 0:
-            LOG.warn("The credentials for host name '%s', encrypted user name '%s' "
-                     "were not found in the database, the password was not updated",
-                     hostname, encryptedUsername)
+            LOG.warning("The credentials for host name '%s', encrypted user name '%s' "
+                        "were not found in the database, the password was not updated",
+                        hostname, encryptedUsername)
 
     def done(self):
         """Close the database connection
@@ -310,28 +317,38 @@ class JsonCredentialsWriter(CredentialsFile):
             LOG.debug("Reading password database in JSON format")
             data = json.load(fh)
 
-        changed_entries = 0
+        try:
+            logins = data['logins']
 
-        for pass_entry in data:
+        except KeyError:
+            LOG.error("Unrecognized format in {0}".format(self.db))
+            raise Exit(Exit.BAD_SECRETS)
+
+        total_entries_to_update = len(pass_list)
+
+        for pass_entry in logins:
+            hostname = pass_entry['hostname']
+            encryptedUsername = pass_entry['encryptedUsername']
+
             try:
-                hostname = data['hostname']
-                encryptedUsername = data['encryptedUsername']
-                encryptedPassword, encType = self.pass_list[(hostname, encryptedUsername)]
-
-                data['encryptedPassword'] = encryptedPassword
-                if encType is not None:
-                    data['encType'] = encType
-
-                changed_entries += 1
+                encryptedPassword, encType = pass_list.pop((hostname, encryptedUsername))
 
             except KeyError:
-                LOG.warn("The credentials for host name '%s', encrypted user name '%s' "
-                         "were not found in the database, the password was not updated",
-                         hostname, encryptedUsername)
+                continue
 
-        if len(self.pass_list) > changed_entries:
-            LOG.warn("failed to update %s of %s entries",
-                    len(self.pass_list) - changed_entries, len(self.pass_list))
+            pass_entry['encryptedPassword'] = encryptedPassword
+            if encType is not None:
+                pass_entry['encType'] = encType
+
+        changed_entries = total_entries_to_update - len(pass_list)
+
+        if changed_entries < total_entries_to_update:
+            LOG.warning("failed to update %s of %s entries:",
+                        total_entries_to_update - changed_entries, total_entries_to_update)
+
+            for hostname, encryptedUsername in sorted(pass_list.keys(), key=lambda e: e[0]):
+                LOG.warning(" - hostname=%s encrypted user name=%s",
+                            hostname, encryptedUsername)
 
         if not changed_entries:
             return
@@ -377,7 +394,7 @@ class NSSDecoder(object):
         self._set_ctypes(None, "PK11_FreeSlot", SlotInfoPtr)
         self._set_ctypes(ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, ct.c_char_p)
         self._set_ctypes(ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
-        self._set_ctypes(ct.c_int, "PK11SDR_Encrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
+        self._set_ctypes(ct.c_int, "PK11SDR_Encrypt", SECItemPtr, SECItemPtr, SECItemPtr, ct.c_void_p)
         self._set_ctypes(None, "SECITEM_ZfreeItem", SECItemPtr, ct.c_int)
 
         # for error handling
@@ -562,15 +579,22 @@ class NSSDecoder(object):
         return res
 
     def encode(self, text):
+        # keyid = F8000000000000000000000000000001
+        keyid_bin = b'\xF8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01'
+        keyid = self.SECItem(0, keyid_bin, len(keyid_bin))
+
         binary = text.encode(LIB_ENCODING)
         inp = self.SECItem(0, binary, len(binary))
         out = self.SECItem(0, None, 0)
 
-        e = self._PK11SDR_Encrypt(inp, out, None)
+        e = self._PK11SDR_Encrypt(keyid, inp, out, None)
         LOG.debug("Encryption of data returned %s", e)
 
         data = ct.string_at(out.data, out.len)
         res = b64encode(data)
+
+        if PY3:
+            res = res.decode()
 
         # Avoid leaking SECItem
         self._SECITEM_ZfreeItem(out, 0)
@@ -602,7 +626,7 @@ class NSSInteraction(object):
             self.NSS.handle_error()
             raise Exit(Exit.FAIL_INIT_NSS)
 
-    def authenticate(self, interactive):
+    def authenticate(self, getpass_mode):
         """Check if the current profile is protected by a master password,
         prompt the user and unlock the profile.
         """
@@ -623,7 +647,7 @@ class NSSInteraction(object):
             # More on this topic: http://stackoverflow.com/a/19636310
             # A possibility would be to define such function using cython but
             # this adds an unnecessary runtime dependency
-            password = ask_password(self.profile, interactive)
+            password = ask_password(self.profile, getpass_mode)
 
             if password:
                 LOG.debug("Authenticating with password '%s'", password)
@@ -670,10 +694,10 @@ class NSSInteraction(object):
         """Decrypt one entry in the database
         """
         LOG.debug("Encrypting username '%s'", user)
-        user64 = self.NSS.decode(user)
+        user64 = self.NSS.encode(user)
 
         LOG.debug("Encrypting password (hidden) for '%s'", user)
-        passw64 = self.NSS.decode(passw)
+        passw64 = self.NSS.encode(passw)
 
         return user64, passw64
 
@@ -1004,7 +1028,7 @@ def ask_section(profiles, choice_arg):
     return final_choice
 
 
-def ask_password(profile, interactive):
+def ask_password(profile, getpass_mode):
     """
     Prompt for profile password
     """
@@ -1013,16 +1037,18 @@ def ask_password(profile, interactive):
 
     passmsg = "\nMaster Password for profile {0}: ".format(profile)
 
-    if sys.stdin.isatty() and interactive:
+    passwd = ""
+
+    if sys.stdin.isatty() and getpass_mode == GETPASS_INTERACTIVE:
         passwd = getpass(passmsg)
 
-    else:
+    elif getpass_mode == GETPASS_STDIN:
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
             passwd = sys.stdin.readline().rstrip("\n")
-        else:
-            LOG.warning("Master Password not provided, continuing with blank password")
-            passwd = ""
+
+    if passwd == "":
+        LOG.warning("Master Password not provided, continuing with blank password")
 
     return py2_decode(passwd)
 
@@ -1146,6 +1172,9 @@ def parse_sys_args():
     parser.add_argument("-n", "--no-interactive", dest="interactive",
                         default=True, action="store_false",
                         help="Disable interactivity.")
+    parser.add_argument("-N", "--no-input", dest="no_input",
+                        default=False, action="store_true",
+                        help="Force empty password, do not try reading from standard input. Implies -n")
     parser.add_argument("-c", "--choice", nargs=1,
                         help="The profile to use (starts with 1). If only one profile, defaults to that.")
     parser.add_argument("-l", "--list", action="store_true",
@@ -1170,6 +1199,16 @@ def parse_sys_args():
         args.format = "csv"
         args.delimiter = "\t"
         args.quotechar = "'"
+
+    if args.format == "auto" and not args.update_from:
+        raise argparse.ArgumentError("--format", "`--format auto' can be used with `--update-from ...' only")
+
+    elif args.format == "human" and args.update_from:
+        raise argparse.ArgumentError("--format", "`--format human' cannot be used with `--update-from ...'")
+
+    # --no-input impliies --no-interactive
+    if args.no_input:
+        args.interactive = False
 
     return args
 
@@ -1207,6 +1246,14 @@ def main():
     LOG.debug("Parsed commandline arguments: %s", args)
     LOG.debug("Running with encodings: USR: %s, SYS: %s, LIB: %s", USR_ENCODING, SYS_ENCODING, LIB_ENCODING)
 
+    # Determine password retrieval mode
+    if args.no_input:
+        getpass_mode = GETPASS_NONE
+    elif args.interactive:
+        getpass_mode = GETPASS_INTERACTIVE
+    else:
+        getpass_mode = GETPASS_STDIN
+
     # Check whether pass from passwordstore.org is installed
     test_password_store(args.export_pass, args.pass_cmd)
 
@@ -1221,7 +1268,7 @@ def main():
     # Start NSS for selected profile
     nss.load_profile(profile)
     # Check if profile is password protected and prompt for a password
-    nss.authenticate(args.interactive)
+    nss.authenticate(getpass_mode)
 
     if args.update_from:
         # Update passwords in the database
