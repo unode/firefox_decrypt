@@ -173,7 +173,7 @@ class Exit(Exception):
         return "Premature program exit with exit code {0}".format(self.exitcode)
 
 
-class CredentialsFile(object):
+class Credentials(object):
     """Base credentials backend manager
     """
     def __init__(self, db):
@@ -192,7 +192,7 @@ class CredentialsFile(object):
         pass
 
 
-class SqliteCredentials(CredentialsFile):
+class SqliteCredentials(Credentials):
     """SQLite credentials backend manager
     """
     def __init__(self, profile):
@@ -288,7 +288,7 @@ class SqliteCredentials(CredentialsFile):
         super(SqliteCredentials, self).done()
 
 
-class JsonCredentials(CredentialsFile):
+class JsonCredentials(Credentials):
     """JSON credentials backend manager
     """
     def __init__(self, profile):
