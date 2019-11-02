@@ -1082,7 +1082,7 @@ def ask_password(profile, getpass_mode):
     if sys.stdin.isatty() and getpass_mode == GETPASS_INTERACTIVE:
         passwd = getpass(passmsg)
 
-    elif getpass_mode == GETPASS_STDIN:
+    elif getpass_mode == GETPASS_STDIN or getpass_mode == GETPASS_INTERACTIVE:
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
             passwd = sys.stdin.readline().rstrip("\n")
