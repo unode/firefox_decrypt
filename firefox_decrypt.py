@@ -203,6 +203,74 @@ class SqliteCredentials(CredentialsFile):
         self.conn = sqlite3.connect(db)
         self.c = self.conn.cursor()
 
+    @contextlib.contextmanager
+    def begin_update(self, decoder, encoder):
+        self._encoder = encoder
+
+        self.c.execute('SELECT id, hostname, encryptedUsername, encryptedPassword, encType '
+                  'FROM moz_logins')
+
+        passwords = {}
+
+        for xid, hostname, encryptedUsername, encryptedPassword, encType in self.c:
+            username, password = decoder(encryptedUsername, encryptedPassword)
+            passwords[(hostname, username)] = (xid, password, encType)
+
+        self._passwords = passwords
+
+        self.c.execute('BEGIN');
+
+        try:
+            yield self
+            LOG.debug("Committing database changes in %s", self.db)
+            self.c.execute('COMMIT');
+
+        except Exception as e:
+            LOG.debug("Rolling back database changes in %s", self.db)
+            self.c.execute('ROLLBACK');
+
+        finally:
+            LOG.debug("Finalizing update of %s", self.db)
+            delattr(self, '_passwords')
+            delattr(self, '_encoder')
+
+    def update_password(self, hostname, username, password, encType=None):
+        try:
+            xid, cur_password, cur_encType = self._passwords[(hostname, username)]
+
+        except KeyError:
+            LOG.warning("The credentials for host name '%s', user name '%s' "
+                        "were not found in the database, the password was not updated",
+                        hostname, username)
+            return False
+
+        LOG.debug("updating: hostname=%s user=%s", hostname, username)
+
+        update_fields = []
+        update_values = []
+
+        if cur_password != password:
+            update_fields.append('encryptedPassword')
+            _, encryptedPassword = self._encoder(username, password)
+            update_values.append(encryptedPassword)
+            LOG.debug("password changed: hostname=%s user=%s", hostname, username)
+
+        if encType is not None and cur_encType != encType:
+            update_fields.append('encType')
+            update_values.append(encType)
+            LOG.debug("encType changed: hostname=%s user=%s", hostname, username)
+
+        if not len(update_fields):
+            LOG.info("The credentials for host name '%s', user name '%s' "
+                     "are the same as in the database, the password was not updated",
+                     hostname, username)
+            return False
+
+        update_values.append(xid)
+
+        self.c.execute("UPDATE moz_logins SET {} WHERE id = ?".format(
+            ', '.join(field + ' = ?' for field in update_fields)), update_values)
+
     def __iter__(self):
         LOG.debug("Reading password database in SQLite format")
         self.c.execute("SELECT hostname, encryptedUsername, encryptedPassword, encType "
@@ -243,75 +311,9 @@ class JsonCredentials(CredentialsFile):
             yield (i["hostname"], i["encryptedUsername"],
                    i["encryptedPassword"], i["encType"])
 
-
-class SqliteCredentialsWriter(CredentialsFile):
-    """SQLite credentials backend manager
-    """
-    def __init__(self, profile):
-        db = os.path.join(profile, "signons.sqlite")
-
-        super(SqliteCredentialsWriter, self).__init__(db)
-
-        self.conn = sqlite3.connect(db)
-
-    def __enter__(self):
-        self.c = self.conn.cursor()
-        self.c.execute('BEGIN');
-        return self;
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is None:
-            LOG.debug("Committing database changes in %s", self.db)
-            self.c.execute('COMMIT');
-
-        else:
-            LOG.debug("Rolling back database changes in %s", self.db)
-            self.c.execute('ROLLBACK');
-
-        self.c.close()
-
-    def update_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
-        if encType is None:
-            self.c.execute("UPDATE moz_logins SET encryptedPassword = ? "
-                           "WHERE hostname = ? AND encryptedUsername = ?",
-                           encryptedPassword, hostname, encryptedUsername)
-
-        else:
-            self.c.execute("UPDATE moz_logins SET encryptedPassword = ?, encType = ? "
-                           "WHERE hostname = ? AND encryptedUsername = ?",
-                           encryptedPassword, encType, hostname, encryptedUsername)
-
-        if self.c.rowcount == 0:
-            LOG.warning("The credentials for host name '%s', encrypted user name '%s' "
-                        "were not found in the database, the password was not updated",
-                        hostname, encryptedUsername)
-
-    def done(self):
-        """Close the database connection
-        """
-        self.conn.close()
-
-        super(SqliteCredentials, self).done()
-
-
-class JsonCredentialsWriter(CredentialsFile):
-    """JSON credentials backend manager
-    """
-    def __init__(self, profile):
-        db = os.path.join(profile, "logins.json")
-
-        super(JsonCredentialsWriter, self).__init__(db)
-
-    def __enter__(self):
-        self.pass_list = {}
-        return self;
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass_list = self.pass_list
-        delattr(self, 'pass_list')
-
-        if exc_type is not None:
-            return
+    @contextlib.contextmanager
+    def begin_update(self, decoder, encoder):
+        self._encoder = encoder
 
         with open(self.db) as fh:
             LOG.debug("Reading password database in JSON format")
@@ -324,49 +326,92 @@ class JsonCredentialsWriter(CredentialsFile):
             LOG.error("Unrecognized format in {0}".format(self.db))
             raise Exit(Exit.BAD_SECRETS)
 
-        total_entries_to_update = len(pass_list)
+        passwords = {}
 
-        for pass_entry in logins:
-            hostname = pass_entry['hostname']
-            encryptedUsername = pass_entry['encryptedUsername']
+        for entry in logins:
+            username, password = decoder(entry['encryptedUsername'], entry['encryptedPassword'])
+            passwords[(entry['hostname'], username)] = [False, password, entry]
 
-            try:
-                encryptedPassword, encType = pass_list.pop((hostname, encryptedUsername))
+        self._passwords = passwords
 
-            except KeyError:
+        failed_keys = []
+        self._failed_keys = failed_keys
+
+        try:
+            yield self
+
+        finally:
+            delattr(self, '_passwords')
+            delattr(self, '_failed_keys')
+            delattr(self, '_encoder')
+            # ... and stop here on exception
+
+        changed_count = 0
+
+        for pass_key, pass_entry in passwords.items():
+            username, _ = pass_key
+            changed, new_password, entry = pass_entry
+            if not changed:
                 continue
 
-            pass_entry['encryptedPassword'] = encryptedPassword
-            if encType is not None:
-                pass_entry['encType'] = encType
+            _, encryptedPassword = self._encoder(username, new_password)
+            entry['encryptedPassword'] = encryptedPassword
+            changed_count += 1
 
-        changed_entries = total_entries_to_update - len(pass_list)
-
-        if changed_entries < total_entries_to_update:
+        if len(failed_keys):
             LOG.warning("failed to update %s of %s entries:",
-                        total_entries_to_update - changed_entries, total_entries_to_update)
+                        len(failed_keys), changed_count + len(failed_keys))
 
-            for hostname, encryptedUsername in sorted(pass_list.keys(), key=lambda e: e[0]):
-                LOG.warning(" - hostname=%s encrypted user name=%s",
-                            hostname, encryptedUsername)
+            for hostname, username in failed_keys:
+                LOG.warning(" - hostname=%s user name=%s", hostname, username)
 
-        if not changed_entries:
+        if changed_count == 0:
+            LOG.info("No entries were changed, not saving the data")
             return
 
         # TODO better solution using tempfile
         tmp_db = self.db + '.tmp'
         with open(tmp_db, 'wt') as fh:
             LOG.debug("Writing changed password database in JSON format "
-                      "(%s entries changed)", changed_entries)
+                      "(%s entries changed)", changed_count)
             json.dump(data, fh)
 
         shutil.move(tmp_db, self.db)
 
-    def update_password(self, hostname, encryptedUsername, encryptedPassword, encType=None):
-        self.pass_list[(hostname, encryptedUsername)] = (encryptedPassword, encType)
+    def update_password(self, hostname, username, password, encType=None):
+        pass_key = (hostname, username)
+
+        try:
+            pass_entry = self._passwords[pass_key]
+
+        except KeyError:
+            self._failed_keys.append(pass_key)
+            LOG.debug("login not found: hostname=%s user=%s", hostname, username)
+            return False
+
+        changed = False
+
+        LOG.debug("updating: hostname=%s user=%s", hostname, username)
+
+        if pass_entry[1] != password:
+            pass_entry[1] = password
+            LOG.debug("password changed: hostname=%s user=%s", hostname, username)
+            changed = True
+
+        if encType is not None and encType != pass_entry[2]['encType']:
+            pass_entry[2]['encType'] = encType
+            LOG.debug("encType changed: hostname=%s user=%s", hostname, username)
+            changed = True
+
+        pass_entry[0] = pass_entry[0] or changed
+
+        return changed
 
 
 class NSSDecoder(object):
+    # anon keyid = F8000000000000000000000000000001
+    ANON_KEYID = b'\xF8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01'
+
     class SECItem(ct.Structure):
         """struct needed to interact with libnss
         """
@@ -755,12 +800,13 @@ class NSSInteraction(object):
             raise ValueError("Invalid input format: {}".format(input_format))
 
         LOG.info("Updating credentials")
-        cred_writer = create_credentials_writer(self.profile)
+        cred_writer = obtain_credentials(self.profile)
 
-        with cred_writer:
+        with cred_writer.begin_update(self.decode_entry, self.encode_entry):
             for password_entry in password_entries:
-                encuser, encpassword = self.encode_entry(password_entry['user'], password_entry['password'])
-                cred_writer.update_password(password_entry['url'], encuser, encpassword)
+                cred_writer.update_password(password_entry['url'],
+                                            password_entry['user'],
+                                            password_entry['password'])
 
     def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|",
                           pretty=False):
@@ -901,21 +947,6 @@ def open_binary_input(filename=None):
     else:
         with open(filename, 'rb') as fd:
             yield fd
-
-
-def create_credentials_writer(profile):
-    """Create a credentials writer object for the credential engine used in the profile
-    """
-    try:
-        cred_writer = JsonCredentialsWriter(profile)
-    except NotFoundError:
-        try:
-            cred_writer = SqliteCredentialsWriter(profile)
-        except NotFoundError:
-            LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
-            raise Exit(Exit.MISSING_SECRETS)
-
-    return cred_writer
 
 
 def obtain_credentials(profile):
