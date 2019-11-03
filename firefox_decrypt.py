@@ -1245,7 +1245,7 @@ def parse_sys_args():
     elif args.format == "human" and args.update_from:
         raise argparse.ArgumentError("--format", "`--format human' cannot be used with `--update-from ...'")
 
-    # --no-input impliies --no-interactive
+    # --no-input implies --no-interactive
     if args.no_input:
         args.interactive = False
 

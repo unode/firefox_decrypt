@@ -68,11 +68,8 @@ class TestImport(unittest.TestCase):
             with open(dest_json, 'wt') as fd:
                 json.dump(import_context.changed_entries, fd)
 
-            import sys
-            print(json.dumps(import_context.changed_entries), file=sys.stderr)
             cmd = command_begin + ["--format", "json", "--update", dest_json]
-            lib.run(cmd, stdin=stdin)
-            #lib.run(cmd, stdin=self.pwd, stderr=subprocess.DEVNULL)
+            lib.run(cmd, stdin=stdin, stderr=subprocess.DEVNULL)
 
             cmd = command_begin + ["--format", "json"]
             new_output = lib.run(cmd, stdin=stdin, stderr=subprocess.DEVNULL)
