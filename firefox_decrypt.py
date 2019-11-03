@@ -354,7 +354,7 @@ class JsonCredentials(Credentials):
             if not changed:
                 continue
 
-            _, encryptedPassword = self._encoder(username, new_password)
+            _, encryptedPassword = encoder(username, new_password)
             entry['encryptedPassword'] = encryptedPassword
             changed_count += 1
 
