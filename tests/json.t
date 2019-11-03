@@ -23,7 +23,13 @@ class TestJSON(unittest.TestCase):
             self.assertDictEqual(entry, expected_data)
             break
 
-    def validate_indentation(self, out, indent_map):
+    def validate_indentation(self, out):
+        data = json.loads(out)
+        indent_map = {
+            '': 2,
+            '  ': 2 * len(data),
+            '    ': sum(len(element) for element in data)
+            }
         indent_counts = {}
         for line in out.strip().splitlines():
             m = re.match(r'^(\s*)', line)
@@ -47,7 +53,7 @@ class TestJSON(unittest.TestCase):
         self.validate_one("onemore_json_pretty", "onemore", out)
         self.validate_one("complex_json_pretty", "cömplex", out)
         self.validate_one("jamie_json_pretty", "jãmïe", out)
-        self.validate_indentation(out, { '': 2, '  ': 8, '    ': 12 })
+        self.validate_indentation(out)
 
     def test_firefox_20_default(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
