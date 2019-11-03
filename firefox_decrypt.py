@@ -1202,7 +1202,7 @@ def parse_sys_args():
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
     parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
                         help="Command/path to use when exporting to pass (default: %(default)s)")
-    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
+    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json", "auto"},
                         default="human", help="Format for the output.")
     parser.add_argument("-d", "--delimiter", action="store", default=";",
                         help="The delimiter for csv output")
@@ -1219,7 +1219,6 @@ def parse_sys_args():
                         help="The profile to use (starts with 1). If only one profile, defaults to that.")
     parser.add_argument("-l", "--list", action="store_true",
                         help="List profiles and exit.")
-    parser.add_argument("--pretty", action="store_true", help="Pretty-print the output JSON")
     parser.add_argument("-u", "--update-from", action="store", metavar="INPUT_FILE",
                         help="Update passwords in database from CSV or JSON instead of exporting"
                              " (the file format is the same as the appropriate export format)")
