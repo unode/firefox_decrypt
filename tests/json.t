@@ -23,6 +23,9 @@ class TestJSON(unittest.TestCase):
             self.assertDictEqual(entry, expected_data)
             break
 
+        else:
+            self.fail("No match found in the output: {}".format(grepkey))
+
     def validate_indentation(self, out):
         data = json.loads(out)
         indent_map = {
@@ -116,4 +119,4 @@ if __name__ == "__main__":
     from simpletap import TAPTestRunner
     unittest.main(testRunner=TAPTestRunner())
 
-# vim: ai sts=4 et sw=4
+# vim: ai sts=4 et sw=4 ft=python
