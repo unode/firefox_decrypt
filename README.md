@@ -2,50 +2,48 @@
 
 [![Build Status](https://travis-ci.org/unode/firefox_decrypt.svg?branch=master)](https://travis-ci.org/unode/firefox_decrypt) [![wercker status](https://app.wercker.com/status/d9b714c5d195dd9e7582e8cd6f463982/m/master "wercker status")](https://app.wercker.com/project/byKey/d9b714c5d195dd9e7582e8cd6f463982)
 
-**Currently the master branch is unstable while we migrate to Python 3.**  
+**The master branch is unstable during migration to Python 3.**  
 
-If you must use Python 2, please try [version 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0).  
+If you must use Python 2, please try [Firefox Decrypt 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0).  
 
-If you have problems using it give the latest [release](https://github.com/unode/firefox_decrypt/releases) a try or check open issues for ongoing work.
+If you encounter a problem, try the latest [release](https://github.com/unode/firefox_decrypt/releases) or check open issues for ongoing work.
 
 #### About
 
-Firefox Decrypt is a tool to extract passwords from Firefox/Thunderbird
-profiles.
+**Firefox Decrypt** is a tool to extract passwords from profiles for: 
 
-It can be used to recover passwords from a profile protected by a Master
-Password as long as the latter is known.
-If a profile is not protected by a Master Password, a password will still be
-requested but can be left blank.
+- Mozilla Firefox™
+- [Mozilla Thunderbird](https://www.thunderbird.net/)®
+- [SeaMonkey](https://www.seamonkey-project.org/)®
+- [Waterfox Classic and Waterfox Current](https://www.waterfox.net/).
 
-This tool does not try to crack or brute-force the Master Password in any way.
-If the Master Password is not known it will simply fail to recover any data.
+The script is written in Python and is compatible with versions ~~2.7+~~ (last is [0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0)) and 3.6+. On Windows, only Python 3 is supported.
 
-This script is written in Python and is compatible with versions ~~2.7+~~ (last is [0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0)) and 3.6+. On Windows, only Python 3 is supported.
+It requires access to libnss3. This is integral to Firefox and Thunderbird, although depending on system configuration, the script may fail to locate the integral library – or load an incorrect/incompatible version.
 
-Additionally, it requires access to libnss3 which is part of Firefox and
-Thunderbird, although depending on system configuration, the script may fail to
-locate it there or load an incorrect/incompatible version.
+Alternatively, you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/…). libnss3 is part of https://developer.mozilla.org/docs/Mozilla/Projects/NSS
 
-Alternatively, you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/...).
-libnss3 is part of https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
+#### Basic usage
 
-If you need to decode passwords from Firefox 3 or older,
-this is not officially supported but a patch exists in [this pull request](https://github.com/unode/firefox_decrypt/pull/36).
-
-#### Usage
-
-Simply run:
+Run:
 
 ```
 python firefox_decrypt.py
 ```
 
-and it will prompt for which profile to use and the master password of that
-profile.
+The tool will present a numbered list of profiles. Enter the relevant number. 
 
-If you don't keep your Firefox profiles on a standard folder you can call the
-script with:
+Then, a prompt to enter the *master password* for the profile: 
+
+- if no password was set, enter nothing – simply key <kbd>Return</kbd> or <kbd>Enter</kbd>
+- if a password was set and is known, enter it
+- if a password was set and is no longer known, you can not proceed
+
+– the tool makes no attempt to use brute force or crack things.
+
+#### Advanced usage
+
+If your profiles are at an unusual path, you can call the script with:
 
 ```
 python firefox_decrypt.py /folder/containing/profiles.ini/
@@ -56,7 +54,8 @@ If you don't want to display all passwords on the screen you can use:
 ```
 python firefox_decrypt.py | grep -C2 keyword
 ```
-where keyword is part of the expected output (URL, username, email, password ...)
+
+– where `keyword` is part of the expected output (URL, username, email, password …)
 
 Since version **0.7.0** passwords may be exported in CSV format using the `--format` flag.
 
@@ -66,30 +65,28 @@ python firefox_decrypt.py --format csv
 
 Additionally, `--delimiter` and `--quotechar` flags can specify which characters to use as delimiters and quote characters in the CSV output.
 
-Since version **0.4** it is now also possible to export stored passwords to
-*pass* from http://passwordstore.org . To do so use:
+Since version **0.4** it is possible to export stored passwords to *pass* from <http://passwordstore.org/>. To do so, use:
 
 ```
 python firefox_decrypt.py --export-pass
 ```
-and **all** existing passwords will be exported after the pattern
-`web/<address>[:<port>]` unless multiple credentials exist for the same website
-in which case `/<login>` is appended.
-The username will be stored on a second line.
 
-Alternatively you can use:
+– **all** existing passwords will be exported after the pattern `web/<address>[:<port>]` unless multiple credentials exist for the same website, in which case `/<login>` will be appended. The username will be on a second line.
+
+To prefix the username with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension: 
+
 ```
 python firefox_decrypt.py --export-pass --pass-compat browserpass
 ```
-to prefix the username with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension.
 
-There is currently no way of selectively exporting passwords.
-Exporting overwrites existing passwords without warning. Make sure you have a
-backup or are using the `pass git` functionality.
+There is currently no way to selectively export passwords.
 
-Starting with version **0.5.2** it is now possible to use a non-interactive mode which bypasses all prompts, including profile choice and master password.
-Use it with `-n/--no-interactive`. Indicate your profile choice by passing `-c/--choice N` where N is the number of the profile you wish to decrypt (starting from **1**).
+Exporting will overwrite existing passwords without warning. Ensure that you have a backup or are using the `pass git` functionality.
+
+Starting with version **0.5.2** it is possible to use a non-interactive mode which bypasses all prompts, including profile choice and master password. Use it with `-n/--no-interactive`. Indicate your profile choice by passing `-c/--choice N` where N is the number of the profile you wish to decrypt (starting from **1**).
+
 You can list all available profiles with `-l/--list` (to stdout).
+
 Your master password is read from stdin.
 
     $ python firefox_decrypt.py --list
@@ -131,40 +128,48 @@ Your master password is read from stdin.
     $ # Unset Password
     $ PASSWORD=
 
+If you need to decode passwords from Firefox 3 or older, this is not officially supported but a patch exists in [this pull request](https://github.com/unode/firefox_decrypt/pull/36).
 
 #### Troubleshooting
 
-If you run into problems please try running `firefox_decrypt` in high verbosity mode by calling it with:
+If a problem occurs, please try `firefox_decrypt` in high verbosity mode by calling it with:
 
 ```
 python firefox_decrypt.py -vvv
 ```
 
-If the output doesn't help you identify the cause and a solution to the problem please file a bug report including the verbose output.  
-**NOTE**: Be aware that your profile password, as well as other passwords, may be visible in the output so make sure you remove any sensitive data before including it in the bug report.
+If the output does not help you to identify the cause and a solution to the problem, file a bug report including the verbose output. **Beware**:  
+
+- your profile password, as well as other passwords, may be visible in the output – so **please remove any sensitive data** before sharing the output.
 
 ##### Windows
 
-If you are on Windows, make sure your Python and Firefox are both 32 or 64 bits.  
-If you mix architectures the code will fail. More information on issue [#8](https://github.com/unode/firefox_decrypt/issues/8).
+Both Python and Firefox must be either 32-bit or 64-bit.  
 
-##### Darwin/MacOS
+Mix architectures will fail – issue [#8](https://github.com/unode/firefox_decrypt/issues/8).
 
-If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3` consider installing `nss` using brew or other package managers.
+##### Darwin/macOS
+
+If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3`, consider installing `nss` using brew or an alternative package manager.
 
 #### Testing
 
-If you wish to run the test suite locally chdir into `tests/` and run `./run_all`
+If you wish to run the test suite locally, chdir into `tests/` and run `./run_all`
 
-If any test fails on your system please ensure `libnss` is installed.
+If any test fails on your system, please ensure that `libnss` is installed.
 
-If afterwards tests still fail, re-run with `./run_all -v` and file a bug
-report including this output. Please include some information about your
-system, including Linux distribution, and version of libnss/firefox.
+If tests continue to fail, re-run with `./run_all -v` then please file a bug report including: 
+
+- the output
+- information about your system (e.g. Linux distribution, version of libnss/firefox …). 
 
 It is much appreciated.
 
-#### Spin-off, derived and related works
+### Spin-off, derived and related works
 
 * [firepwned](https://github.com/christophetd/firepwned#how-it-works) - check if your passwords have been involved in a known data leak
-* [FF Password Exporter](https://github.com/kspearrin/ff-password-exporter) - Firefox AddOn for exporting passwords
+* [FF Password Exporter](https://github.com/kspearrin/ff-password-exporter) - Firefox AddOn for exporting passwords. 
+
+----
+
+Firefox is a trademark of the Mozilla Foundation in the U.S. and other countries.
