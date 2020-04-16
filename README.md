@@ -15,8 +15,7 @@ If you encounter a problem, try the latest [release](https://github.com/unode/fi
 It can be used to recover passwords from a profile protected by a Master Password as long as the latter is known.
 If a profile is not protected by a Master Password, a password will still be requested but can be left blank.
 
-This tool does not try to crack or brute-force the Master Password in any way.
-If the Master Password is not known it will simply fail to recover any data.
+This tool also allows to perform a dictionary attack on the Master Password.
 
 This script is written in Python and is compatible with versions ~~2.7+~~ (last is [0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0)) and 3.6+. On Windows, only Python 3 is supported.
 
@@ -130,6 +129,10 @@ Your master password is read from stdin.
 
     $ # Unset Password
     $ PASSWORD=
+
+Alternatively, you can provide a wordlist of master passwords for a dictionary attack.
+
+    $ python firefox_decrypt.py -w passwords.lst l1u1xh65.default
 
 #### Troubleshooting
 

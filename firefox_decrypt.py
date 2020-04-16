@@ -473,20 +473,40 @@ class NSSInteraction(object):
             LOG.error("Couldn't initialize NSS, maybe '%s' is not a valid profile?", self.profile)
             self.NSS.handle_error()
             raise Exit(Exit.FAIL_INIT_NSS)
+    
+    def attack(self, dictionary):
+        """Dictionary attack
+        """
+        with open(dictionary) as f:
+            for l in f:
+                password = l.strip()
+                if password == "" or password.startswith("#"):
+                    continue
+                try:
+                    self.authenticate(False, password, True)
+                    LOG.info("Password found: {}".format(password))
+                    break
+                except Exit:
+                    continue
+        self.authenticate(False, password)
 
-    def authenticate(self, interactive):
+    def authenticate(self, interactive, password=None, silent=False):
         """Check if the current profile is protected by a master password,
         prompt the user and unlock the profile.
         """
-        LOG.debug("Retrieving internal key slot")
+        if not silent:
+            LOG.debug("Retrieving internal key slot")
         keyslot = self.NSS._PK11_GetInternalKeySlot()
 
-        LOG.debug("Internal key slot %s", keyslot)
+        if not silent:
+            LOG.debug("Internal key slot %s", keyslot)
         if not keyslot:
             LOG.error("Failed to retrieve internal KeySlot")
             self.NSS.handle_error()
             raise Exit(Exit.FAIL_NSS_KEYSLOT)
-
+        
+        if not password:
+            password = ask_password(self.profile, interactive)
         try:
             # NOTE It would be great to be able to check if the profile is
             # protected by a master password. In C++ one would do:
@@ -495,16 +515,17 @@ class NSSInteraction(object):
             # More on this topic: http://stackoverflow.com/a/19636310
             # A possibility would be to define such function using cython but
             # this adds an unnecessary runtime dependency
-            password = ask_password(self.profile, interactive)
 
             if password:
                 LOG.debug("Authenticating with password '%s'", password)
                 e = self.NSS._PK11_CheckUserPassword(keyslot, password.encode(LIB_ENCODING))
-
-                LOG.debug("Checking user password returned %s", e)
+                
+                if not silent:
+                    LOG.debug("Checking user password returned %s", e)
 
                 if e != 0:
-                    LOG.error("Master password is not correct")
+                    if not silent:
+                        LOG.error("Master password is not correct")
 
                     self.NSS.handle_error()
                     raise Exit(Exit.BAD_MASTER_PASSWORD)
@@ -920,6 +941,7 @@ def parse_sys_args():
                         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
     parser.add_argument("--version", action="version", version=__version__,
                         help="Display version of firefox_decrypt and exit")
+    parser.add_argument("-w", "--wordlist", help="wordlist for password guessing attack")
 
     args = parser.parse_args()
 
@@ -981,8 +1003,11 @@ def main():
 
     # Start NSS for selected profile
     nss.load_profile(profile)
-    # Check if profile is password protected and prompt for a password
-    nss.authenticate(args.interactive)
+    if not args.wordlist:
+        # Check if profile is password protected and prompt for a password
+        nss.authenticate(args.interactive)
+    else:
+        nss.attack(args.wordlist)
     # Decode all passwords
     to_export = nss.decrypt_passwords(
         export=args.export_pass,
