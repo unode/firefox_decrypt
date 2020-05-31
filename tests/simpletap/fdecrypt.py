@@ -2,6 +2,7 @@
 
 import os
 import re
+import datetime
 from subprocess import run, CalledProcessError, PIPE, STDOUT
 
 
@@ -55,10 +56,15 @@ class Test:
     def remove_full_pwd(self, output):
         return output.replace(os.path.join(self.testdir, ''), '')
 
-    def remove_log_date_time(self, input):
+    def remove_log_date_time(self, input, dropmatches=False):
         output = []
+        date = str(datetime.datetime.now().date())
         for line in input.split('\n'):
-            output.append(line.split(' ', 2)[-1])
+            if line.startswith(date):
+                if not dropmatches:
+                    output.append(line.split(' ', 2)[-1])
+            else:
+                output.append(line)
 
         return '\n'.join(output)
 
