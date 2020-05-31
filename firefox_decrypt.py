@@ -602,9 +602,9 @@ class NSSInteraction(object):
                 )
                 for line in output:
                     sys.stdout.write(py2_encode(line, USR_ENCODING))
-            if output_format == "json":
-                print(json.dumps(outputs))
 
+        if output_format == "json":
+            print(json.dumps(outputs, indent=2))
 
         credentials.done()
 
