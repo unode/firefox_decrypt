@@ -783,11 +783,15 @@ def ask_password(profile, interactive):
         passwd = getpass(passmsg)
 
     else:
-        # Ability to read the password from stdin (echo "pass" | ./firefox_...)
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-            passwd = sys.stdin.readline().rstrip("\n")
-        else:
-            LOG.warning("Master Password not provided, continuing with blank password")
+        try: # Sometimes when running Windows, the "select.select([sys.stdin], [], [], 0)[0]" raises an OSError
+            # Ability to read the password from stdin (echo "pass" | ./firefox_...)
+            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                passwd = sys.stdin.readline().rstrip("\n")
+            else:
+                LOG.warning("Master Password not provided, continuing with blank password")
+                passwd = ""
+        
+        except OSError: # Is the OSError is raised set passwd blank
             passwd = ""
 
     return py2_decode(passwd)
