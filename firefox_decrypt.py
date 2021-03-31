@@ -21,80 +21,25 @@ import csv
 import ctypes as ct
 import json
 import logging
+import locale
 import os
 import select
 import sqlite3
 import sys
 from base64 import b64decode
 from getpass import getpass
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, DEVNULL
+from urllib.parse import urlparse
+from configparser import ConfigParser
 
-try:
-    # Python 3
-    from subprocess import DEVNULL
-except ImportError:
-    # Python 2
-    DEVNULL = open(os.devnull, 'w')
-
-try:
-    # Python 3
-    from urllib.parse import urlparse
-except ImportError:
-    # Python 2
-    from urlparse import urlparse
-
-try:
-    # Python 3
-    from configparser import ConfigParser
-    raw_input = input
-except ImportError:
-    # Python 2
-    from ConfigParser import ConfigParser
-
-PY3 = sys.version_info.major > 2
 LOG = None
 VERBOSE = False
 SYS64 = sys.maxsize > 2**32
-
-if not PY3 and os.name == "nt":
-    sys.stderr.write("WARNING: You are using Python 2 on Windows. If your "
-                     "passwords include non-alphanumeric characters you "
-                     "will run into problems.\n")
-    sys.stderr.write("WARNING: Python 2 + Windows is no longer supported. "
-                     "Please use Python 3 instead\n")
 
 # Windows uses a mixture of different codecs for different components
 # ANSI CP1252 for system messages, while NSS uses UTF-8
 # To further complicate things, with python 2.7 the default stdout/stdin codec
 # isn't UTF-8 but language dependent (tested on Windows 7)
-
-if os.name == "nt":
-    SYS_ENCODING = "cp1252"
-    LIB_ENCODING = "utf8"
-else:
-    SYS_ENCODING = "utf8"
-    LIB_ENCODING = "utf8"
-
-# When using pipes stdin/stdout encoding may be None
-USR_ENCODING = sys.stdin.encoding or sys.stdout.encoding or "utf8"
-
-
-def py2_decode(_bytes, encoding=USR_ENCODING):
-    if PY3:
-        return _bytes
-    else:
-        return _bytes.decode(encoding)
-
-
-def py2_encode(_unicode, encoding=USR_ENCODING):
-    if PY3:
-        return _unicode
-    else:
-        return _unicode.encode(encoding)
-
-
-def type_decode(encoding):
-    return lambda x: py2_decode(x, encoding)
 
 
 def get_version():
@@ -115,7 +60,7 @@ def get_version():
         return internal_version()
     else:
         # Both py2 and py3 return bytes here
-        return stdout.decode(USR_ENCODING).strip()
+        return stdout.strip()
 
 
 __version_info__ = (0, 8, 0, "+git")
@@ -137,6 +82,7 @@ class Exit(Exception):
     BAD_PROFILEINI = 4
     LOCATION_NO_DIRECTORY = 5
     BAD_SECRETS = 6
+    BAD_LOCALE = 7
 
     FAIL_LOCATE_NSS = 10
     FAIL_LOAD_NSS = 11
@@ -252,9 +198,10 @@ class NSSDecoder(object):
         """opaque structure representing a logical PKCS slot
         """
 
-    def __init__(self):
+    def __init__(self, encoding="UTF-8"):
         # Locate libnss and try loading it
         self.NSS = None
+        self.encoding = encoding
         self.load_libnss()
 
         SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
@@ -334,7 +281,7 @@ class NSSDecoder(object):
                       "Errors seen while searching/loading NSS:")
 
             for target, error in fail_errors:
-                LOG.error("Error when loading %s was %s", target, py2_decode(str(error), SYS_ENCODING))
+                LOG.error("Error when loading %s was %s", target, error)
 
             raise Exit(Exit.FAIL_LOCATE_NSS)
 
@@ -362,8 +309,6 @@ class NSSDecoder(object):
                     r"C:\Program Files\Nightly",
                 )
 
-            # FIXME this was present in the past adding the location where NSS was found to PATH
-            # I'm not sure why this would be necessary. We don't need to run Firefox...
             # TODO Test on a Windows machine and see if this works without the PATH change
             # os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
             # LOG.debug("PATH is now %s", os.environ["PATH"])
@@ -422,10 +367,9 @@ class NSSDecoder(object):
 
         code = self._PORT_GetError()
         name = self._PR_ErrorToName(code)
-        name = "NULL" if name is None else name.decode(SYS_ENCODING)
+        name = "NULL" if name is None else name
         # 0 is the default language (localization related)
         text = self._PR_ErrorToString(code, 0)
-        text = text.decode(SYS_ENCODING)
 
         LOG.debug("%s: %s", name, text)
 
@@ -442,7 +386,7 @@ class NSSDecoder(object):
                 self.handle_error()
                 raise Exit(Exit.NEED_MASTER_PASSWORD)
 
-            res = ct.string_at(out.data, out.len).decode(LIB_ENCODING)
+            res = ct.string_at(out.data, out.len)
         finally:
             # Avoid leaking SECItem
             self._SECITEM_ZfreeItem(out, 0)
@@ -450,23 +394,21 @@ class NSSDecoder(object):
         return res
 
 
-class NSSInteraction(object):
+class NSSInteraction:
     """
     Interact with lib NSS
     """
-    def __init__(self):
+    def __init__(self, encoding="UTF-8"):
         self.profile = None
-        self.NSS = NSSDecoder()
+        self.NSS = NSSDecoder(encoding)
 
     def load_profile(self, profile):
         """Initialize the NSS library and profile
         """
         LOG.debug("Initializing NSS with profile path '%s'", profile)
-        self.profile = profile
+        self.profile = profile.encode("utf8")
 
-        profile = profile.encode(LIB_ENCODING)
-
-        e = self.NSS._NSS_Init(b"sql:" + profile)
+        e = self.NSS._NSS_Init(b"sql:" + self.profile)
         LOG.debug("Initializing NSS returned %s", e)
 
         if e != 0:
@@ -499,7 +441,7 @@ class NSSInteraction(object):
 
             if password:
                 LOG.debug("Authenticating with password '%s'", password)
-                e = self.NSS._PK11_CheckUserPassword(keyslot, password.encode(LIB_ENCODING))
+                e = self.NSS._PK11_CheckUserPassword(keyslot, password)
 
                 LOG.debug("Checking user password returned %s", e)
 
@@ -586,10 +528,7 @@ class NSSInteraction(object):
 
             if output_format == "csv":
                 output = {"url": url, "user": user, "password": passw}
-                if PY3:
-                    csv_writer.writerow(output)
-                else:
-                    csv_writer.writerow({k: v.encode(USR_ENCODING) for k, v in output.items()})
+                csv_writer.writerow(output)
             elif output_format == "json":
                 output = {"url": url, "user": user, "password": passw}
                 outputs.append(output)
@@ -601,7 +540,7 @@ class NSSInteraction(object):
                     u"Password: '{0}'\n".format(passw),
                 )
                 for line in output:
-                    sys.stdout.write(py2_encode(line, USR_ENCODING))
+                    sys.stdout.write(line)
 
         if output_format == "json":
             print(json.dumps(outputs, indent=2))
@@ -700,7 +639,7 @@ def export_pass(to_export, pass_cmd, prefix, username_prefix):
             LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
 
             p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
-            out, err = p.communicate(data.encode(SYS_ENCODING))
+            out, err = p.communicate(data)
 
             if p.returncode != 0:
                 LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
@@ -754,7 +693,7 @@ def ask_section(profiles, choice_arg):
                 sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
                 print_sections(sections)
                 try:
-                    choice = raw_input()
+                    choice = input()
                 except EOFError:
                     LOG.error("Could not read Choice, got EOF")
                     raise Exit(Exit.READ_GOT_EOF)
@@ -774,9 +713,6 @@ def ask_password(profile, interactive):
     """
     Prompt for profile password
     """
-    if not PY3:
-        profile = profile.encode(SYS_ENCODING)
-
     passmsg = "\nMaster Password for profile {0}: ".format(profile)
 
     if sys.stdin.isatty() and interactive:
@@ -790,7 +726,7 @@ def ask_password(profile, interactive):
             LOG.warning("Master Password not provided, continuing with blank password")
             passwd = ""
 
-    return py2_decode(passwd)
+    return passwd
 
 
 def read_profiles(basepath, list_profiles):
@@ -859,13 +795,14 @@ def get_profile(basepath, interactive, choice, list_profiles):
                 section = sections['1']
 
             else:
-                LOG.error("Don't know which profile to decrypt. We are in non-interactive mode and -c/--choice is missing.")
+                LOG.error("Don't know which profile to decrypt. "
+                          "We are in non-interactive mode and -c/--choice is missing.")
                 raise Exit(Exit.MISSING_CHOICE)
         else:
             # Ask user which profile to open
             section = ask_section(profiles, choice)
 
-        section = py2_decode(section, LIB_ENCODING)
+        section = section
         profile = os.path.join(basepath, section)
 
         if not os.path.isdir(profile):
@@ -890,7 +827,6 @@ def parse_sys_args():
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
     )
     parser.add_argument("profile", nargs="?", default=profile_path,
-                        type=type_decode(SYS_ENCODING),
                         help="Path to profile folder (default: {0})".format(profile_path))
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
@@ -964,15 +900,24 @@ def main():
     if args.tabular:
         LOG.warning("--tabular is deprecated. Use `--format csv --delimiter \\t` instead")
 
+    encoding = locale.getlocale()[1]
+
+    if encoding is None:
+        LOG.error("Could not determine which encoding/locale to use for NSS interaction. "
+                  "This configuration is unsupported. "
+                  "Please search online how to 'configure locale in <your operating system>' "
+                  "and try again.")
+        raise Exit(Exit.BAD_LOCALE)
+
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
-    LOG.debug("Running with encodings: USR: %s, SYS: %s, LIB: %s", USR_ENCODING, SYS_ENCODING, LIB_ENCODING)
+    LOG.debug("Running with encodings: stdin: %s, locale: %s", sys.stdin.encoding, encoding)
 
     # Check whether pass from passwordstore.org is installed
     test_password_store(args.export_pass, args.pass_cmd)
 
     # Initialize nss before asking the user for input
-    nss = NSSInteraction()
+    nss = NSSInteraction(encoding=encoding)
 
     basepath = os.path.expanduser(args.profile)
 
@@ -1008,7 +953,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         print("Quit.")
         sys.exit(Exit.KEYBOARD_INTERRUPT)
     except Exit as e:
