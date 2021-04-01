@@ -16,6 +16,8 @@
 
 # Based on original work from: www.dumpzilla.org
 
+from __future__ import annotations
+
 import argparse
 import csv
 import ctypes as ct
@@ -32,10 +34,13 @@ from getpass import getpass
 from subprocess import PIPE, Popen, DEVNULL
 from urllib.parse import urlparse
 from configparser import ConfigParser
+from typing import Optional, NewType
 
-LOG = None
+LOG: logging.Logger
 VERBOSE = False
 SYS64 = sys.maxsize > 2**32
+
+ExportDict = NewType("ExportDict", dict[str, dict[str, str]])
 
 # Windows uses a mixture of different codecs for different components
 # ANSI CP1252 for system messages, while NSS uses UTF-8
@@ -43,7 +48,7 @@ SYS64 = sys.maxsize > 2**32
 # isn't UTF-8 but language dependent (tested on Windows 7)
 
 
-def get_version():
+def get_version() -> str:
     """Obtain version information from git if available otherwise use
     the internal version number
     """
@@ -64,7 +69,7 @@ def get_version():
 
 
 __version_info__ = (0, 9, 0, "+git")
-__version__ = get_version()
+__version__: str = get_version()
 
 
 class NotFoundError(Exception):
@@ -247,15 +252,15 @@ def load_libnss():
     if os.name == "nt":
         nssname = "nss3.dll"
         if SYS64:
-            locations = (
+            locations: list[str] = [
                 "",  # Current directory or system lib finder
                 r"C:\Program Files\Mozilla Firefox",
                 r"C:\Program Files\Mozilla Thunderbird",
                 r"C:\Program Files\Nightly",
                 r"C:\Program Files\Waterfox",
-            )
+            ]
         else:
-            locations = (
+            locations: list[str] = [
                 "",  # Current directory or system lib finder
                 r"C:\Program Files (x86)\Mozilla Firefox",
                 r"C:\Program Files (x86)\Mozilla Thunderbird",
@@ -268,7 +273,7 @@ def load_libnss():
                 r"C:\Program Files\Nightly",
                 r"C:\Program Files\SeaMonkey",
                 r"C:\Program Files\Waterfox",
-            )
+            ]
 
     elif os.uname()[0] == "Darwin":
         nssname = "libnss3.dylib"
@@ -480,20 +485,27 @@ class NSSInteraction:
 
         return user, passw
 
-    def decrypt_passwords(self, export, output_format="human", csv_delimiter=";", csv_quotechar="|"):
+    def decrypt_passwords(self, export: bool, output_format: str = "human",
+                          csv_delimiter: str = ";", csv_quotechar: str = "|"):
         """
         Decrypt requested profile using the provided password and print out all
         stored passwords.
         """
-        # Any password in this profile store at all?
-        got_password = False
-        header = True
+        # Types used
+        url: str
+        user: str
+        passw: str
+        enctype: bool
 
-        credentials = obtain_credentials(self.profile)
+        # Any password in this profile store at all?
+        got_password: bool = False
+        header: bool = True
+
+        credentials: Credentials = obtain_credentials(self.profile)
 
         LOG.info("Decrypting credentials")
-        to_export = {}
-        outputs = []
+        to_export: ExportDict = ExportDict({})
+        outputs: list[dict[str, str]] = []
 
         if output_format == "csv":
             csv_writer = csv.DictWriter(
@@ -535,12 +547,12 @@ class NSSInteraction:
                 outputs.append(output)
 
             else:
-                output = (
+                columns: tuple[str, str, str] = (
                     f"\nWebsite:   {url}\n",
                     f"Username: '{user}'\n",
                     f"Password: '{passw}'\n",
                 )
-                for line in output:
+                for line in columns:
                     sys.stdout.write(line)
 
         if output_format == "json":
@@ -555,7 +567,7 @@ class NSSInteraction:
             return to_export
 
 
-def test_password_store(export, pass_cmd):
+def test_password_store(export: bool, pass_cmd: str) -> None:
     """Check if pass from passwordstore.org is installed
     If it is installed but not initialized, initialize it
     """
@@ -591,9 +603,10 @@ def test_password_store(export, pass_cmd):
             raise Exit(Exit.UNKNOWN_ERROR)
 
 
-def obtain_credentials(profile):
+def obtain_credentials(profile: str) -> Credentials:
     """Figure out which of the 2 possible backend credential engines is available
     """
+    credentials: Credentials
     try:
         credentials = JsonCredentials(profile)
     except NotFoundError:
@@ -606,7 +619,7 @@ def obtain_credentials(profile):
     return credentials
 
 
-def export_pass(to_export, pass_cmd, prefix, username_prefix):
+def export_pass(to_export: ExportDict, pass_cmd, prefix: str, username_prefix: str) -> None:
     """Export given passwords to password store
 
     Format of "to_export" should be:
@@ -835,9 +848,9 @@ def parse_sys_args():
                         choices={"default", "browserpass", "username"},
                         default="default",
                         help="Export username as is (default), or with one of the compatibility modes")
-    parser.add_argument("-p", "--pass-prefix", action="store", default=u"web",
+    parser.add_argument("-p", "--pass-prefix", action="store", default="web",
                         help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
-    parser.add_argument("-m", "--pass-cmd", action="store", default=u"pass",
+    parser.add_argument("-m", "--pass-cmd", action="store", default="pass",
                         help="Command/path to use when exporting to pass (default: %(default)s)")
     parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
                         default="human", help="Format for the output.")
@@ -872,7 +885,7 @@ def parse_sys_args():
     return args
 
 
-def setup_logging(args):
+def setup_logging(args) -> None:
     """Setup the logging level and configure the basic logger
     """
     if args.verbose == 1:
@@ -891,7 +904,7 @@ def setup_logging(args):
     LOG = logging.getLogger(__name__)
 
 
-def main():
+def main() -> None:
     """Main entry point
     """
     args = parse_sys_args()
@@ -901,7 +914,7 @@ def main():
     if args.tabular:
         LOG.warning("--tabular is deprecated. Use `--format csv --delimiter \\t` instead")
 
-    encoding = locale.getlocale()[1]
+    encoding: Optional[str] = locale.getlocale()[1]
 
     if encoding is None:
         LOG.error("Could not determine which encoding/locale to use for NSS interaction. "
