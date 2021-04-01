@@ -26,6 +26,7 @@ import os
 import select
 import sqlite3
 import sys
+import shutil
 from base64 import b64decode
 from getpass import getpass
 from subprocess import PIPE, Popen, DEVNULL
@@ -59,11 +60,10 @@ def get_version():
     if p.returncode:
         return internal_version()
     else:
-        # Both py2 and py3 return bytes here
         return stdout.strip()
 
 
-__version_info__ = (0, 8, 0, "+git")
+__version_info__ = (0, 9, 0, "+git")
 __version__ = get_version()
 
 
@@ -184,6 +184,140 @@ class JsonCredentials(Credentials):
                        i["encryptedPassword"], i["encType"])
 
 
+def find_nss(locations, nssname):
+    """Locate nss is one of the many possible locations
+    """
+    fail_errors = []
+
+    for loc in locations:
+        nsslib = os.path.join(loc, nssname)
+        LOG.debug("Loading NSS library from %s", nsslib)
+
+        if os.name == "nt":
+            # On windows in order to find DLLs referenced by nss3.dll
+            # we need to have those locations on PATH
+            os.environ["PATH"] = ';'.join([loc, os.environ["PATH"]])
+            LOG.debug("PATH is now %s", os.environ["PATH"])
+            # However this doesn't seem to work on all setups and needs to be
+            # set before starting python so as a workaround we chdir to
+            # Firefox's nss3.dll location
+            if loc:
+                if not os.path.isdir(loc):
+                    # No point in trying to load from paths that don't exist
+                    continue
+
+                workdir = os.getcwd()
+                os.chdir(loc)
+
+        try:
+            nss = ct.CDLL(nsslib)
+        except OSError as e:
+            fail_errors.append((nsslib, str(e)))
+        else:
+            LOG.debug("Loaded NSS library from %s", nsslib)
+            return nss
+        finally:
+            if os.name == "nt" and loc:
+                # Restore workdir changed above
+                os.chdir(workdir)
+
+    else:
+        LOG.error("Couldn't find or load '%s'. This library is essential "
+                  "to interact with your Mozilla profile.", nssname)
+        LOG.error("If you are seeing this error please perform a system-wide "
+                  "search for '%s' and file a bug report indicating any "
+                  "location found. Thanks!", nssname)
+        LOG.error("Alternatively you can try launching firefox_decrypt "
+                  "from the location where you found '%s'. "
+                  "That is 'cd' or 'chdir' to that location and run "
+                  "firefox_decrypt from there.", nssname)
+
+        LOG.error("Please also include the following on any bug report. "
+                  "Errors seen while searching/loading NSS:")
+
+        for target, error in fail_errors:
+            LOG.error("Error when loading %s was %s", target, error)
+
+        raise Exit(Exit.FAIL_LOCATE_NSS)
+
+
+def load_libnss():
+    """Load libnss into python using the CDLL interface
+    """
+    if os.name == "nt":
+        nssname = "nss3.dll"
+        if SYS64:
+            locations = (
+                "",  # Current directory or system lib finder
+                r"C:\Program Files\Mozilla Firefox",
+                r"C:\Program Files\Mozilla Thunderbird",
+                r"C:\Program Files\Nightly",
+                r"C:\Program Files\Waterfox",
+            )
+        else:
+            locations = (
+                "",  # Current directory or system lib finder
+                r"C:\Program Files (x86)\Mozilla Firefox",
+                r"C:\Program Files (x86)\Mozilla Thunderbird",
+                r"C:\Program Files (x86)\Nightly",
+                r"C:\Program Files (x86)\SeaMonkey",
+                r"C:\Program Files (x86)\Waterfox",
+                # On windows 32bit these folders can also be 32bit
+                r"C:\Program Files\Mozilla Firefox",
+                r"C:\Program Files\Mozilla Thunderbird",
+                r"C:\Program Files\Nightly",
+                r"C:\Program Files\SeaMonkey",
+                r"C:\Program Files\Waterfox",
+            )
+
+    elif os.uname()[0] == "Darwin":
+        nssname = "libnss3.dylib"
+        locations = (
+            "",  # Current directory or system lib finder
+            "/usr/local/lib/nss",
+            "/usr/local/lib",
+            "/opt/local/lib/nss",
+            "/sw/lib/firefox",
+            "/sw/lib/mozilla",
+            "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
+            "/opt/pkg/lib/nss",  # installed via pkgsrc
+        )
+
+    else:
+        nssname = "libnss3.so"
+        if SYS64:
+            locations = (
+                "",  # Current directory or system lib finder
+                "/usr/lib64",
+                "/usr/lib64/nss",
+                "/usr/lib",
+                "/usr/lib/nss",
+                "/usr/local/lib",
+                "/usr/local/lib/nss",
+                "/opt/local/lib",
+                "/opt/local/lib/nss",
+                os.path.expanduser("~/.nix-profile/lib"),
+            )
+        else:
+            locations = (
+                "",  # Current directory or system lib finder
+                "/usr/lib",
+                "/usr/lib/nss",
+                "/usr/lib32",
+                "/usr/lib32/nss",
+                "/usr/lib64",
+                "/usr/lib64/nss",
+                "/usr/local/lib",
+                "/usr/local/lib/nss",
+                "/opt/local/lib",
+                "/opt/local/lib/nss",
+                os.path.expanduser("~/.nix-profile/lib"),
+            )
+
+    # If this succeeds libnss was loaded
+    return find_nss(locations, nssname)
+
+
 class NSSDecoder(object):
     class SECItem(ct.Structure):
         """struct needed to interact with libnss
@@ -200,9 +334,8 @@ class NSSDecoder(object):
 
     def __init__(self, encoding="UTF-8"):
         # Locate libnss and try loading it
-        self.NSS = None
+        self.NSS = load_libnss()
         self.encoding = encoding
-        self.load_libnss()
 
         SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
         SECItemPtr = ct.POINTER(self.SECItem)
@@ -227,138 +360,6 @@ class NSSDecoder(object):
         res.restype = restype
         res.argtypes = argtypes
         setattr(self, "_" + name, res)
-
-    @staticmethod
-    def find_nss(locations, nssname):
-        """Locate nss is one of the many possible locations
-        """
-        fail_errors = []
-
-        for loc in locations:
-            nsslib = os.path.join(loc, nssname)
-            LOG.debug("Loading NSS library from %s", nsslib)
-
-            if os.name == "nt":
-                # On windows in order to find DLLs referenced by nss3.dll
-                # we need to have those locations on PATH
-                os.environ["PATH"] = ';'.join([loc, os.environ["PATH"]])
-                LOG.debug("PATH is now %s", os.environ["PATH"])
-                # However this doesn't seem to work on all setups and needs to be
-                # set before starting python so as a workaround we chdir to
-                # Firefox's nss3.dll location
-                if loc:
-                    if not os.path.isdir(loc):
-                        # No point in trying to load from paths that don't exist
-                        continue
-
-                    workdir = os.getcwd()
-                    os.chdir(loc)
-
-            try:
-                nss = ct.CDLL(nsslib)
-            except OSError as e:
-                fail_errors.append((nsslib, str(e)))
-            else:
-                LOG.debug("Loaded NSS library from %s", nsslib)
-                return nss
-            finally:
-                if os.name == "nt" and loc:
-                    # Restore workdir changed above
-                    os.chdir(workdir)
-
-        else:
-            LOG.error("Couldn't find or load '%s'. This library is essential "
-                      "to interact with your Mozilla profile.", nssname)
-            LOG.error("If you are seeing this error please perform a system-wide "
-                      "search for '%s' and file a bug report indicating any "
-                      "location found. Thanks!", nssname)
-            LOG.error("Alternatively you can try launching firefox_decrypt "
-                      "from the location where you found '%s'. "
-                      "That is 'cd' or 'chdir' to that location and run "
-                      "firefox_decrypt from there.", nssname)
-
-            LOG.error("Please also include the following on any bug report. "
-                      "Errors seen while searching/loading NSS:")
-
-            for target, error in fail_errors:
-                LOG.error("Error when loading %s was %s", target, error)
-
-            raise Exit(Exit.FAIL_LOCATE_NSS)
-
-    def load_libnss(self):
-        """Load libnss into python using the CDLL interface
-        """
-        if os.name == "nt":
-            nssname = "nss3.dll"
-            if SYS64:
-                locations = (
-                    "",  # Current directory or system lib finder
-                    r"C:\Program Files\Mozilla Firefox",
-                    r"C:\Program Files\Mozilla Thunderbird",
-                    r"C:\Program Files\Nightly",
-                )
-            else:
-                locations = (
-                    "",  # Current directory or system lib finder
-                    r"C:\Program Files (x86)\Mozilla Firefox",
-                    r"C:\Program Files (x86)\Mozilla Thunderbird",
-                    r"C:\Program Files (x86)\Nightly",
-                    # On windows 32bit these folders can also be 32bit
-                    r"C:\Program Files\Mozilla Firefox",
-                    r"C:\Program Files\Mozilla Thunderbird",
-                    r"C:\Program Files\Nightly",
-                )
-
-            # TODO Test on a Windows machine and see if this works without the PATH change
-            # os.environ["PATH"] = ';'.join([os.environ["PATH"], firefox])
-            # LOG.debug("PATH is now %s", os.environ["PATH"])
-
-        elif os.uname()[0] == "Darwin":
-            nssname = "libnss3.dylib"
-            locations = (
-                "",  # Current directory or system lib finder
-                "/usr/local/lib/nss",
-                "/usr/local/lib",
-                "/opt/local/lib/nss",
-                "/sw/lib/firefox",
-                "/sw/lib/mozilla",
-                "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
-                "/opt/pkg/lib/nss",  # installed via pkgsrc
-            )
-
-        else:
-            nssname = "libnss3.so"
-            if SYS64:
-                locations = (
-                    "",  # Current directory or system lib finder
-                    "/usr/lib64",
-                    "/usr/lib64/nss",
-                    "/usr/lib",
-                    "/usr/lib/nss",
-                    "/usr/local/lib",
-                    "/usr/local/lib/nss",
-                    "/opt/local/lib",
-                    "/opt/local/lib/nss",
-                    os.path.expanduser("~/.nix-profile/lib"),
-                )
-            else:
-                locations = (
-                    "",  # Current directory or system lib finder
-                    "/usr/lib",
-                    "/usr/lib/nss",
-                    "/usr/lib32",
-                    "/usr/lib32/nss",
-                    "/usr/lib64",
-                    "/usr/lib64/nss",
-                    "/usr/local/lib",
-                    "/usr/local/lib/nss",
-                    "/opt/local/lib",
-                    "/opt/local/lib/nss",
-                    os.path.expanduser("~/.nix-profile/lib"),
-                )
-
-        # If this succeeds libnss was loaded
-        self.NSS = self.find_nss(locations, nssname)
 
     def handle_error(self):
         """If an error happens in libnss, handle it and print some debug information
