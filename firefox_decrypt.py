@@ -107,7 +107,7 @@ class Exit(Exception):
         self.exitcode = exitcode
 
     def __unicode__(self):
-        return "Premature program exit with exit code {0}".format(self.exitcode)
+        return f"Premature program exit with exit code {self.exitcode}"
 
 
 class Credentials(object):
@@ -118,7 +118,7 @@ class Credentials(object):
 
         LOG.debug("Database location: %s", self.db)
         if not os.path.isfile(db):
-            raise NotFoundError("ERROR - {0} database not found\n".format(db))
+            raise NotFoundError(f"ERROR - {db} database not found\n")
 
         LOG.info("Using %s for credentials.", db)
 
@@ -176,7 +176,7 @@ class JsonCredentials(Credentials):
             try:
                 logins = data["logins"]
             except Exception:
-                LOG.error("Unrecognized format in {0}".format(self.db))
+                LOG.error(f"Unrecognized format in {self.db}")
                 raise Exit(Exit.BAD_SECRETS)
 
             for i in logins:
@@ -536,9 +536,9 @@ class NSSInteraction:
 
             else:
                 output = (
-                    u"\nWebsite:   {0}\n".format(url),
-                    u"Username: '{0}'\n".format(user),
-                    u"Password: '{0}'\n".format(passw),
+                    f"\nWebsite:   {url}\n",
+                    f"Username: '{user}'\n",
+                    f"Password: '{passw}'\n",
                 )
                 for line in output:
                     sys.stdout.write(line)
@@ -614,7 +614,7 @@ def export_pass(to_export, pass_cmd, prefix, username_prefix):
     """
     LOG.info("Exporting credentials to password store")
     if prefix:
-        prefix = u"{0}/".format(prefix)
+        prefix = f"{prefix}/"
 
     LOG.debug("Using pass prefix '%s'", prefix)
 
@@ -623,14 +623,14 @@ def export_pass(to_export, pass_cmd, prefix, username_prefix):
             # When more than one account exist for the same address, add
             # the login to the password identifier
             if len(to_export[address]) > 1:
-                passname = u"{0}{1}/{2}".format(prefix, address, user)
+                passname = f"{prefix}{address}/{user}"
 
             else:
-                passname = u"{0}{1}".format(prefix, address)
+                passname = f"{prefix}{address}"
 
             LOG.debug("Exporting credentials for '%s'", passname)
 
-            data = u"{0}\n{1}{2}\n".format(passw, username_prefix, user)
+            data = f"{passw}\n{username_prefix}{user}\n"
 
             LOG.debug("Inserting pass '%s' '%s'", passname, data)
 
@@ -670,7 +670,7 @@ def print_sections(sections, textIOWrapper=sys.stderr):
     Prints all available sections to an textIOWrapper (defaults to sys.stderr)
     """
     for i in sorted(sections):
-        textIOWrapper.write("{0} -> {1}\n".format(i, sections[i]))
+        textIOWrapper.write(f"{i} -> {sections[i]}\n")
     textIOWrapper.flush()
 
 
@@ -714,7 +714,7 @@ def ask_password(profile, interactive):
     """
     Prompt for profile password
     """
-    passmsg = "\nMaster Password for profile {0}: ".format(profile)
+    passmsg = f"\nMaster Password for profile {profile}: "
 
     if sys.stdin.isatty() and interactive:
         passwd = getpass(passmsg)
@@ -828,7 +828,7 @@ def parse_sys_args():
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
     )
     parser.add_argument("profile", nargs="?", default=profile_path,
-                        help="Path to profile folder (default: {0})".format(profile_path))
+                        help=f"Path to profile folder (default: {profile_path})")
     parser.add_argument("-e", "--export-pass", action="store_true",
                         help="Export URL, username and password to pass from passwordstore.org")
     parser.add_argument("--pass-compat", action="store",
