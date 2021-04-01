@@ -275,6 +275,14 @@ def load_libnss():
                 r"C:\Program Files\Waterfox",
             ]
 
+        # If either of the supported software is in PATH try to use it
+        software = ["firefox", "thunderbird", "waterfox", "seamonkey"]
+        for binary in software:
+            location: Optional[str] = shutil.which(binary)
+            if location is not None:
+                nsslocation: str = os.path.join(os.path.dirname(location), nssname)
+                locations.append(nsslocation)
+
     elif os.uname()[0] == "Darwin":
         nssname = "libnss3.dylib"
         locations = (
