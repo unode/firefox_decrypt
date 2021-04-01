@@ -51,7 +51,7 @@ def get_version():
         return '.'.join(map(str, __version_info__[:3])) + ''.join(__version_info__[3:])
 
     try:
-        p = Popen(["git", "describe", "--tags"], stdout=PIPE, stderr=DEVNULL)
+        p = Popen(["git", "describe", "--tags"], stdout=PIPE, stderr=DEVNULL, text=True)
     except OSError:
         return internal_version()
 
@@ -567,7 +567,7 @@ def test_password_store(export, pass_cmd):
     LOG.debug("Testing if password store is installed and configured")
 
     try:
-        p = Popen([pass_cmd], stdout=PIPE, stderr=PIPE)
+        p = Popen([pass_cmd], stdout=PIPE, stderr=PIPE, text=True)
     except OSError as e:
         if e.errno == 2:
             LOG.error("Password store is not installed and exporting was requested")
@@ -639,7 +639,7 @@ def export_pass(to_export, pass_cmd, prefix, username_prefix):
 
             LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
 
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE, text=True)
             out, err = p.communicate(data)
 
             if p.returncode != 0:
