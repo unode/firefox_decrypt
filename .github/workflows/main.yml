@@ -1,0 +1,47 @@
+name: Test firefox_decrypt
+on: [push]
+
+jobs:
+  test-latest-firefox:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [ ubuntu, macos ]
+        python-version: [ 3.7, 3.8, 3.9, 3.10.0-alpha.6, pypy3 ]
+        firefox: [ 'latest-devedition', 'latest-esr', 'latest' ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Setup firefox ${{ matrix.firefox }}
+        uses: browser-actions/setup-firefox@latest
+        with:
+          firefox-version: ${{ matrix.firefox }}
+      - name: Run tests
+        run: |
+          cd tests
+          python run_all -v
+
+  test-87-firefox:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [ ubuntu, macos, windows ]
+        python-version: [ 3.7, 3.8, 3.9, 3.10.0-alpha.6, pypy3 ]
+        firefox: [ '87.0' ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Setup firefox ${{ matrix.firefox }}
+        uses: browser-actions/setup-firefox@latest
+        with:
+          firefox-version: ${{ matrix.firefox }}
+      - name: Run tests
+        run: |
+          cd tests
+          python run_all -v
