@@ -254,25 +254,26 @@ def load_libnss():
         if SYS64:
             locations: list[str] = [
                 "",  # Current directory or system lib finder
-                r"C:\Program Files\Mozilla Firefox",
-                r"C:\Program Files\Mozilla Thunderbird",
-                r"C:\Program Files\Nightly",
-                r"C:\Program Files\Waterfox",
+                "C:\\Program Files\\Mozilla Firefox",
+                "C:\\Program Files\\Mozilla Thunderbird",
+                "C:\\Program Files\\Nightly",
+                "C:\\Program Files\\SeaMonkey",
+                "C:\\Program Files\\Waterfox",
             ]
         else:
             locations: list[str] = [
                 "",  # Current directory or system lib finder
-                r"C:\Program Files (x86)\Mozilla Firefox",
-                r"C:\Program Files (x86)\Mozilla Thunderbird",
-                r"C:\Program Files (x86)\Nightly",
-                r"C:\Program Files (x86)\SeaMonkey",
-                r"C:\Program Files (x86)\Waterfox",
+                "C:\\Program Files (x86)\\Mozilla Firefox",
+                "C:\\Program Files (x86)\\Mozilla Thunderbird",
+                "C:\\Program Files (x86)\\Nightly",
+                "C:\\Program Files (x86)\\SeaMonkey",
+                "C:\\Program Files (x86)\\Waterfox",
                 # On windows 32bit these folders can also be 32bit
-                r"C:\Program Files\Mozilla Firefox",
-                r"C:\Program Files\Mozilla Thunderbird",
-                r"C:\Program Files\Nightly",
-                r"C:\Program Files\SeaMonkey",
-                r"C:\Program Files\Waterfox",
+                "C:\\Program Files\\Mozilla Firefox",
+                "C:\\Program Files\\Mozilla Thunderbird",
+                "C:\\Program Files\\Nightly",
+                "C:\\Program Files\\SeaMonkey",
+                "C:\\Program Files\\Waterfox",
             ]
 
         # If either of the supported software is in PATH try to use it
