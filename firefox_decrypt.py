@@ -60,7 +60,7 @@ def get_version() -> str:
     except OSError:
         return internal_version()
 
-    stdout, stderr = p.communicate()
+    stdout, _ = p.communicate()
 
     if p.returncode:
         return internal_version()
