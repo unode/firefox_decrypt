@@ -333,7 +333,13 @@ def load_libnss():
     return find_nss(locations, nssname)
 
 
-class NSSDecoder(object):
+class c_char_p_fromstr(ct.c_char_p):
+    """ctypes char_p override that handles encoding str to bytes"""
+    def from_param(self):
+        return self.encode(identify_system_locale())
+
+
+class NSSProxy:
     class SECItem(ct.Structure):
         """struct needed to interact with libnss
         """
@@ -343,23 +349,26 @@ class NSSDecoder(object):
             ('len', ct.c_uint),
         ]
 
+        def decode_data(self):
+            _bytes = ct.string_at(self.data, self.len)
+            return _bytes.decode(identify_system_locale())
+
     class PK11SlotInfo(ct.Structure):
-        """opaque structure representing a logical PKCS slot
+        """Opaque structure representing a logical PKCS slot
         """
 
-    def __init__(self, encoding="UTF-8"):
+    def __init__(self):
         # Locate libnss and try loading it
         self.NSS = load_libnss()
-        self.encoding = encoding
 
         SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
         SECItemPtr = ct.POINTER(self.SECItem)
 
-        self._set_ctypes(ct.c_int, "NSS_Init", ct.c_char_p)
+        self._set_ctypes(ct.c_int, "NSS_Init", c_char_p_fromstr)
         self._set_ctypes(ct.c_int, "NSS_Shutdown")
         self._set_ctypes(SlotInfoPtr, "PK11_GetInternalKeySlot")
         self._set_ctypes(None, "PK11_FreeSlot", SlotInfoPtr)
-        self._set_ctypes(ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, ct.c_char_p)
+        self._set_ctypes(ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, c_char_p_fromstr)
         self._set_ctypes(ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
         self._set_ctypes(None, "SECITEM_ZfreeItem", SECItemPtr, ct.c_int)
 
@@ -372,8 +381,15 @@ class NSSDecoder(object):
         """Set input/output types on libnss C functions for automatic type casting
         """
         res = getattr(self.NSS, name)
-        res.restype = restype
         res.argtypes = argtypes
+        res.restype = restype
+
+        # Transparently handle decoding to string when returning a c_char_p
+        if restype == ct.c_char_p:
+            def _decode(result, func, *args):
+                return result.decode(identify_system_locale())
+            res.errcheck = _decode
+
         setattr(self, "_" + name, res)
 
     def handle_error(self):
@@ -402,7 +418,7 @@ class NSSDecoder(object):
                 self.handle_error()
                 raise Exit(Exit.NEED_MASTER_PASSWORD)
 
-            res = ct.string_at(out.data, out.len)
+            res = out.decode_data()
         finally:
             # Avoid leaking SECItem
             self._SECITEM_ZfreeItem(out, 0)
@@ -912,6 +928,21 @@ def setup_logging(args) -> None:
 
     global LOG
     LOG = logging.getLogger(__name__)
+
+
+def identify_system_locale() -> str:
+    encoding: Optional[str] = locale.getlocale()[1]
+
+    if encoding is None:
+        LOG.error(
+            "Could not determine which encoding/locale to use for NSS interaction. "
+            "This configuration is unsupported.\n"
+            "If you are in Linux or MacOS, please search online "
+            "how to configure a UTF-8 compatible locale and try again."
+        )
+        raise Exit(Exit.BAD_LOCALE)
+
+    return encoding
 
 
 def main() -> None:
