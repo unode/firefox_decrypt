@@ -1,12 +1,19 @@
 #### Changelog
 
-##### 0.8.0+git
+##### 1.0.0
+- Output formats have been internally refactored for easier extensibility.
+  There is now 'human', 'csv', 'tabular', 'json' and 'pass'
+- This version hopefully fixes the long standing encoding issues in Windows and MacOSX
+- `--quotechar` is now `--csv-quotechar`.
+- `--delimiter` is now `--csv-delimiter`.
+- `--tabular` is now `--format tabular`.
+- `--export-pass` is now `--format pass`.
+- Drop support for Python 2. Python 3.9 is now the required minimal version.
 - Add compatibility with browserpass via `--pass-compat=browserpass`
 - Add compatibility mode `username` for a `username:` prefix
 - Add `--pass-cmd` to allow specifying pass's location or script name.
 - Using `--pass-prefix=''` prevents creation of a prefix: `web/address/...` becomes `address/...`
 - Fix an encoding bug due to non-ASCII characters leading to a user's profile path
-- Drop support for Python 2 on Windows. Python 3 works fine.
 - Explicitly target 32/64bit Mozilla folders depending on Python bitness
 
 ##### 0.7.0
