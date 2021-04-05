@@ -41,12 +41,11 @@ VERBOSE = False
 SYSTEM = platform.system()
 SYS64 = sys.maxsize > 2**32
 
-ExportDict = NewType("ExportDict", dict[str, dict[str, str]])
+PWStore = list[dict[str, str]]
 
-# Windows uses a mixture of different codecs for different components
-# ANSI CP1252 for system messages, while NSS uses UTF-8
-# To further complicate things, with python 2.7 the default stdout/stdin codec
-# isn't UTF-8 but language dependent (tested on Windows 7)
+# Windows codec used to interact with dll's depends on the
+# system's locale (and language)
+# In Linux/Mac UTF-8 is a safe assumption
 
 
 def get_version() -> str:
@@ -358,7 +357,7 @@ class NSSProxy:
 
     def __init__(self):
         # Locate libnss and try loading it
-        self.NSS = load_libnss()
+        self.libnss = load_libnss()
 
         SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
         SECItemPtr = ct.POINTER(self.SECItem)
@@ -367,6 +366,7 @@ class NSSProxy:
         self._set_ctypes(ct.c_int, "NSS_Shutdown")
         self._set_ctypes(SlotInfoPtr, "PK11_GetInternalKeySlot")
         self._set_ctypes(None, "PK11_FreeSlot", SlotInfoPtr)
+        self._set_ctypes(ct.c_int, "PK11_NeedLogin", SlotInfoPtr)
         self._set_ctypes(ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, c_char_p_fromstr)
         self._set_ctypes(ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
         self._set_ctypes(None, "SECITEM_ZfreeItem", SECItemPtr, ct.c_int)
@@ -379,7 +379,7 @@ class NSSProxy:
     def _set_ctypes(self, restype, name, *argtypes):
         """Set input/output types on libnss C functions for automatic type casting
         """
-        res = getattr(self.NSS, name)
+        res = getattr(self.libnss, name)
         res.argtypes = argtypes
         res.restype = restype
 
@@ -391,10 +391,72 @@ class NSSProxy:
 
         setattr(self, "_" + name, res)
 
-    def handle_error(self):
+    def initialize(self, profile: str):
+        # The sql: prefix ensures compatibility with both
+        # Berkley DB (cert8) and Sqlite (cert9) dbs
+        profile_path = "sql:" + profile
+        LOG.debug("Initializing NSS with profile '%s'", profile_path)
+        err_status: int = self._NSS_Init(profile_path)
+        LOG.debug("Initializing NSS returned %s", err_status)
+
+        if err_status:
+            self.handle_error(
+                Exit.FAIL_INIT_NSS,
+                "Couldn't initialize NSS, maybe '%s' is not a valid profile?",
+                profile,
+            )
+
+    def shutdown(self):
+        err_status: int = self._NSS_Shutdown()
+
+        if err_status:
+            self.handle_error(
+                Exit.FAIL_SHUTDOWN_NSS,
+                "Couldn't shutdown current NSS profile",
+            )
+
+    def authenticate(self, profile, interactive):
+        """Unlocks the profile if necessary, in which case a password
+        will prompted to the user.
+        """
+        LOG.debug("Retrieving internal key slot")
+        keyslot = self._PK11_GetInternalKeySlot()
+
+        LOG.debug("Internal key slot %s", keyslot)
+        if not keyslot:
+            self.handle_error(
+                Exit.FAIL_NSS_KEYSLOT,
+                "Failed to retrieve internal KeySlot",
+            )
+
+        try:
+            if self._PK11_NeedLogin(keyslot):
+                password: str = ask_password(profile, interactive)
+
+                LOG.debug("Authenticating with password '%s'", password)
+                err_status: int = self._PK11_CheckUserPassword(keyslot, password)
+
+                LOG.debug("Checking user password returned %s", err_status)
+
+                if err_status:
+                    self.handle_error(
+                        Exit.BAD_MASTER_PASSWORD,
+                        "Master password is not correct",
+                    )
+
+            else:
+                LOG.warning("Attempting decryption with no Master Password")
+        finally:
+            # Avoid leaking PK11KeySlot
+            self._PK11_FreeSlot(keyslot)
+
+    def handle_error(self, exitcode: int, *logerror: Any):
         """If an error happens in libnss, handle it and print some debug information
         """
-        LOG.debug("Error during a call to NSS library, trying to obtain error info")
+        if logerror:
+            LOG.error(*logerror)
+        else:
+            LOG.debug("Error during a call to NSS library, trying to obtain error info")
 
         code = self._PORT_GetError()
         name = self._PR_ErrorToName(code)
@@ -404,18 +466,21 @@ class NSSProxy:
 
         LOG.debug("%s: %s", name, text)
 
-    def decode(self, data64):
+        raise Exit(exitcode)
+
+    def decrypt(self, data64):
         data = b64decode(data64)
         inp = self.SECItem(0, data, len(data))
         out = self.SECItem(0, None, 0)
 
-        e = self._PK11SDR_Decrypt(inp, out, None)
-        LOG.debug("Decryption of data returned %s", e)
+        err_status: int = self._PK11SDR_Decrypt(inp, out, None)
+        LOG.debug("Decryption of data returned %s", err_status)
         try:
-            if e == -1:
-                LOG.error("Password decryption failed. Passwords protected by a Master Password!")
-                self.handle_error()
-                raise Exit(Exit.NEED_MASTER_PASSWORD)
+            if err_status:  # -1 means password failed, other status are unknown
+                self.handle_error(
+                    Exit.NEED_MASTER_PASSWORD,
+                    "Password decryption failed. Passwords protected by a Master Password!",
+                )
 
             res = out.decode_data()
         finally:
@@ -425,267 +490,240 @@ class NSSProxy:
         return res
 
 
-class NSSInteraction:
+class MozillaInteraction:
     """
-    Interact with lib NSS
+    Abstraction interface to Mozilla profile and lib NSS
     """
-    def __init__(self, encoding="UTF-8"):
+    def __init__(self):
         self.profile = None
-        self.NSS = NSSDecoder(encoding)
+        self.proxy = NSSProxy()
 
     def load_profile(self, profile):
         """Initialize the NSS library and profile
         """
-        LOG.debug("Initializing NSS with profile path '%s'", profile)
-        self.profile = profile.encode("utf8")
-
-        e = self.NSS._NSS_Init(b"sql:" + self.profile)
-        LOG.debug("Initializing NSS returned %s", e)
-
-        if e != 0:
-            LOG.error("Couldn't initialize NSS, maybe '%s' is not a valid profile?", self.profile)
-            self.NSS.handle_error()
-            raise Exit(Exit.FAIL_INIT_NSS)
+        self.profile = profile
+        self.proxy.initialize(self.profile)
 
     def authenticate(self, interactive):
-        """Check if the current profile is protected by a master password,
+        """Authenticate the the current profile is protected by a master password,
         prompt the user and unlock the profile.
         """
-        LOG.debug("Retrieving internal key slot")
-        keyslot = self.NSS._PK11_GetInternalKeySlot()
-
-        LOG.debug("Internal key slot %s", keyslot)
-        if not keyslot:
-            LOG.error("Failed to retrieve internal KeySlot")
-            self.NSS.handle_error()
-            raise Exit(Exit.FAIL_NSS_KEYSLOT)
-
-        try:
-            # NOTE It would be great to be able to check if the profile is
-            # protected by a master password. In C++ one would do:
-            #   if (keyslot->needLogin):
-            # however accessing instance methods is not supported by ctypes.
-            # More on this topic: http://stackoverflow.com/a/19636310
-            # A possibility would be to define such function using cython but
-            # this adds an unnecessary runtime dependency
-            password = ask_password(self.profile, interactive)
-
-            if password:
-                LOG.debug("Authenticating with password '%s'", password)
-                e = self.NSS._PK11_CheckUserPassword(keyslot, password)
-
-                LOG.debug("Checking user password returned %s", e)
-
-                if e != 0:
-                    LOG.error("Master password is not correct")
-
-                    self.NSS.handle_error()
-                    raise Exit(Exit.BAD_MASTER_PASSWORD)
-
-            else:
-                LOG.warning("Attempting decryption with no Master Password")
-        finally:
-            # Avoid leaking PK11KeySlot
-            self.NSS._PK11_FreeSlot(keyslot)
+        self.proxy.authenticate(self.profile, interactive)
 
     def unload_profile(self):
         """Shutdown NSS and deactivate current profile
         """
-        e = self.NSS._NSS_Shutdown()
+        self.proxy.shutdown()
 
-        if e != 0:
-            LOG.error("Couldn't shutdown current NSS profile")
-
-            self.NSS.handle_error()
-            raise Exit(Exit.FAIL_SHUTDOWN_NSS)
-
-    def decode_entry(self, user64, passw64):
-        """Decrypt one entry in the database
+    def decrypt_passwords(self) -> PWStore:
+        """Decrypt requested profile using the provided password.
+        Returns all passwords in a list of dicts
         """
-        LOG.debug("Decrypting username data '%s'", user64)
-        user = self.NSS.decode(user64)
+        credentials: Credentials = self.obtain_credentials()
 
-        LOG.debug("Decrypting password data '%s'", passw64)
-        passw = self.NSS.decode(passw64)
+        LOG.info("Decrypting credentials")
+        outputs: list[dict[str, str]] = []
 
-        return user, passw
-
-    def decrypt_passwords(self, export: bool, output_format: str = "human",
-                          csv_delimiter: str = ";", csv_quotechar: str = "|"):
-        """
-        Decrypt requested profile using the provided password and print out all
-        stored passwords.
-        """
-        # Types used
         url: str
         user: str
         passw: str
-        enctype: bool
-
-        # Any password in this profile store at all?
-        got_password: bool = False
-        header: bool = True
-
-        credentials: Credentials = obtain_credentials(self.profile)
-
-        LOG.info("Decrypting credentials")
-        to_export: ExportDict = ExportDict({})
-        outputs: list[dict[str, str]] = []
-
-        if output_format == "csv":
-            csv_writer = csv.DictWriter(
-                sys.stdout, fieldnames=["url", "user", "password"],
-                lineterminator="\n", delimiter=csv_delimiter,
-                quotechar=csv_quotechar, quoting=csv.QUOTE_ALL,
-            )
-            if header:
-                csv_writer.writeheader()
-
+        enctype: int
         for url, user, passw, enctype in credentials:
-            got_password = True
-
-            # enctype informs if passwords are encrypted and protected by
-            # a master password
+            # enctype informs if passwords need to be decrypted
             if enctype:
-                user, passw = self.decode_entry(user, passw)
+                LOG.debug("Decrypting username data '%s'", user)
+                user = self.proxy.decrypt(user)
+                LOG.debug("Decrypting password data '%s'", passw)
+                passw = self.proxy.decrypt(passw)
 
             LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, url)
-            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", type(user), type(passw), type(url))
 
-            if export:
-                # Keep track of web-address, username and passwords
-                # If more than one username exists for the same web-address
-                # the username will be used as name of the file
-                address = urlparse(url)
+            output = {"url": url, "user": user, "password": passw}
+            outputs.append(output)
 
-                if address.netloc not in to_export:
-                    to_export[address.netloc] = {user: passw}
-
-                else:
-                    to_export[address.netloc][user] = passw
-
-            if output_format == "csv":
-                output = {"url": url, "user": user, "password": passw}
-                csv_writer.writerow(output)
-            elif output_format == "json":
-                output = {"url": url, "user": user, "password": passw}
-                outputs.append(output)
-
-            else:
-                columns: tuple[str, str, str] = (
-                    f"\nWebsite:   {url}\n",
-                    f"Username: '{user}'\n",
-                    f"Password: '{passw}'\n",
-                )
-                for line in columns:
-                    sys.stdout.write(line)
-
-        if output_format == "json":
-            print(json.dumps(outputs, indent=2))
-
-        credentials.done()
-
-        if not got_password:
+        if not outputs:
             LOG.warning("No passwords found in selected profile")
 
-        if export:
-            return to_export
+        # Close credential handles (SQL)
+        credentials.done()
 
+        return outputs
 
-def test_password_store(export: bool, pass_cmd: str) -> None:
-    """Check if pass from passwordstore.org is installed
-    If it is installed but not initialized, initialize it
-    """
-    # Nothing to do here if exporting wasn't requested
-    if not export:
-        LOG.debug("Skipping password store test, not exporting")
-        return
-
-    LOG.debug("Testing if password store is installed and configured")
-
-    try:
-        p = Popen([pass_cmd], stdout=PIPE, stderr=PIPE, text=True)
-    except OSError as e:
-        if e.errno == 2:
-            LOG.error("Password store is not installed and exporting was requested")
-            raise Exit(Exit.PASSSTORE_MISSING)
-        else:
-            LOG.error("Unknown error happened.")
-            LOG.error("Error was %s", e)
-            raise Exit(Exit.UNKNOWN_ERROR)
-
-    out, err = p.communicate()
-    LOG.debug("pass returned: %s %s", out, err)
-
-    if p.returncode != 0:
-        if 'Try "pass init"' in err:
-            LOG.error("Password store was not initialized.")
-            LOG.error("Initialize the password store manually by using 'pass init'")
-            raise Exit(Exit.PASSSTORE_NOT_INIT)
-        else:
-            LOG.error("Unknown error happened when running 'pass'.")
-            LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-            raise Exit(Exit.UNKNOWN_ERROR)
-
-
-def obtain_credentials(profile: str) -> Credentials:
-    """Figure out which of the 2 possible backend credential engines is available
-    """
-    credentials: Credentials
-    try:
-        credentials = JsonCredentials(profile)
-    except NotFoundError:
+    def obtain_credentials(self) -> Credentials:
+        """Figure out which of the 2 possible backend credential engines is available
+        """
+        credentials: Credentials
         try:
-            credentials = SqliteCredentials(profile)
+            credentials = JsonCredentials(self.profile)
         except NotFoundError:
-            LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
-            raise Exit(Exit.MISSING_SECRETS)
+            try:
+                credentials = SqliteCredentials(self.profile)
+            except NotFoundError:
+                LOG.error("Couldn't find credentials file (logins.json or signons.sqlite).")
+                raise Exit(Exit.MISSING_SECRETS)
 
-    return credentials
+        return credentials
 
 
-def export_pass(to_export: ExportDict, pass_cmd, prefix: str, username_prefix: str) -> None:
-    """Export given passwords to password store
+class OutputFormat:
+    def __init__(self, pwstore: PWStore, cmdargs: argparse.Namespace):
+        self.pwstore = pwstore
+        self.cmdargs = cmdargs
 
-    Format of "to_export" should be:
-        {"address": {"login": "password", ...}, ...}
-    """
-    LOG.info("Exporting credentials to password store")
-    if prefix:
-        prefix = f"{prefix}/"
+    def output(self):
+        pass
 
-    LOG.debug("Using pass prefix '%s'", prefix)
 
-    for address in to_export:
-        for user, passw in to_export[address].items():
-            # When more than one account exist for the same address, add
-            # the login to the password identifier
-            if len(to_export[address]) > 1:
-                passname = f"{prefix}{address}/{user}"
+class HumanOutputFormat(OutputFormat):
+    def output(self):
+        for output in self.pwstore:
+            record: str = (
+                f"\nWebsite:   {output['url']}\n"
+                f"Username: '{output['user']}'\n"
+                f"Password: '{output['password']}'\n"
+            )
+            sys.stdout.write(record)
+
+
+class JSONOutputFormat(OutputFormat):
+    def output(self):
+        sys.stdout.write(json.dumps(self.pwstore, indent=2))
+
+
+class CSVOutputFormat(OutputFormat):
+    def __init__(self, pwstore: PWStore, cmdargs: argparse.Namespace):
+        super().__init__(pwstore, cmdargs)
+        self.delimiter = cmdargs.csv_delimiter
+        self.quotechar = cmdargs.csv_quotechar
+        self.header = cmdargs.csv_header
+
+    def output(self):
+        csv_writer = csv.DictWriter(
+            sys.stdout,
+            fieldnames=["url", "user", "password"],
+            lineterminator="\n",
+            delimiter=self.delimiter,
+            quotechar=self.quotechar,
+            quoting=csv.QUOTE_ALL,
+        )
+        if self.header:
+            csv_writer.writeheader()
+
+        for output in self.pwstore:
+            csv_writer.writerow(output)
+
+
+class TabularOutputFormat(CSVOutputFormat):
+    def __init__(self, pwstore: PWStore, cmdargs: argparse.Namespace):
+        super().__init__(pwstore, cmdargs)
+        self.delimiter = "\t"
+        self.quotechar = "'"
+
+
+class PassOutputFormat(OutputFormat):
+    def __init__(self, pwstore: PWStore, cmdargs: argparse.Namespace):
+        super().__init__(pwstore, cmdargs)
+        self.prefix = cmdargs.pass_prefix
+        self.cmd = cmdargs.pass_cmd
+        self.username_prefix = cmdargs.pass_username_prefix
+
+    def output(self):
+        self.test_pass_cmd()
+        self.preprocess_outputs()
+        self.export()
+
+    def test_pass_cmd(self) -> None:
+        """Check if pass from passwordstore.org is installed
+        If it is installed but not initialized, initialize it
+        """
+        LOG.debug("Testing if password store is installed and configured")
+
+        try:
+            p = run([self.cmd], capture_output=True, text=True)
+        except FileNotFoundError as e:
+            if e.errno == 2:
+                LOG.error("Password store is not installed and exporting was requested")
+                raise Exit(Exit.PASSSTORE_MISSING)
+            else:
+                LOG.error("Unknown error happened.")
+                LOG.error("Error was '%s'", e)
+                raise Exit(Exit.UNKNOWN_ERROR)
+
+        LOG.debug("pass returned:\nStdout: %s\nStderr: %s", p.stdout, p.stderr)
+
+        if p.returncode != 0:
+            if 'Try "pass init"' in p.stderr:
+                LOG.error("Password store was not initialized.")
+                LOG.error("Initialize the password store manually by using 'pass init'")
+                raise Exit(Exit.PASSSTORE_NOT_INIT)
+            else:
+                LOG.error("Unknown error happened when running 'pass'.")
+                LOG.error("Stdout: %s\nStderr: %s", p.stdout, p.stderr)
+                raise Exit(Exit.UNKNOWN_ERROR)
+
+    def preprocess_outputs(self):
+        # Format of "self.to_export" should be:
+        #     {"address": {"login": "password", ...}, ...}
+        self.to_export: dict[str, dict[str, str]] = {}
+
+        for record in self.pwstore:
+            url = record["url"]
+            user = record["user"]
+            passw = record["password"]
+
+            # Keep track of web-address, username and passwords
+            # If more than one username exists for the same web-address
+            # the username will be used as name of the file
+            address = urlparse(url)
+
+            if address.netloc not in self.to_export:
+                self.to_export[address.netloc] = {user: passw}
 
             else:
-                passname = f"{prefix}{address}"
+                self.to_export[address.netloc][user] = passw
 
-            LOG.debug("Exporting credentials for '%s'", passname)
+    def export(self):
+        """Export given passwords to password store
 
-            data = f"{passw}\n{username_prefix}{user}\n"
+        Format of "to_export" should be:
+            {"address": {"login": "password", ...}, ...}
+        """
+        LOG.info("Exporting credentials to password store")
+        if self.prefix:
+            prefix = f"{self.prefix}/"
+        else:
+            prefix = self.prefix
 
-            LOG.debug("Inserting pass '%s' '%s'", passname, data)
+        LOG.debug("Using pass prefix '%s'", prefix)
 
-            # NOTE --force is used. Existing passwords will be overwritten
-            cmd = [pass_cmd, "insert", "--force", "--multiline", passname]
+        for address in self.to_export:
+            for user, passw in self.to_export[address].items():
+                # When more than one account exist for the same address, add
+                # the login to the password identifier
+                if len(self.to_export[address]) > 1:
+                    passname = f"{prefix}{address}/{user}"
+                else:
+                    passname = f"{prefix}{address}"
 
-            LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
+                LOG.debug("Exporting credentials for '%s'", passname)
 
-            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE, text=True)
-            out, err = p.communicate(data)
+                data = f"{passw}\n{self.username_prefix}{user}\n"
 
-            if p.returncode != 0:
-                LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
-                LOG.error("Stdout/Stderr was '%s' '%s'", out, err)
-                raise Exit(Exit.PASSSTORE_ERROR)
+                LOG.debug("Inserting pass '%s' '%s'", passname, data)
 
-            LOG.debug("Successfully exported '%s'", passname)
+                # NOTE --force is used. Existing passwords will be overwritten
+                cmd: list[str] = [self.cmd, "insert", "--force", "--multiline", passname]
+
+                LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
+
+                p = run(cmd, input=data, capture_output=True, text=True)
+
+                if p.returncode != 0:
+                    LOG.error("ERROR: passwordstore exited with non-zero: %s", p.returncode)
+                    LOG.error("Stdout: %s\nStderr: %s", p.stdout, p.stderr)
+                    raise Exit(Exit.PASSSTORE_ERROR)
+
+                LOG.debug("Successfully exported '%s'", passname)
 
 
 def get_sections(profiles):
@@ -712,30 +750,20 @@ def print_sections(sections, textIOWrapper=sys.stderr):
     textIOWrapper.flush()
 
 
-def ask_section(profiles, choice_arg):
+def ask_section(sections: ConfigParser):
     """
     Prompt the user which profile should be used for decryption
     """
-    sections = get_sections(profiles)
-
     # Do not ask for choice if user already gave one
-    if choice_arg and len(choice_arg) == 1:
-        choice = choice_arg[0]
-    else:
-        # If only one menu entry exists, use it without prompting
-        if len(sections) == 1:
-            choice = "1"
-
-        else:
-            choice = None
-            while choice not in sections:
-                sys.stderr.write("Select the Firefox profile you wish to decrypt\n")
-                print_sections(sections)
-                try:
-                    choice = input()
-                except EOFError:
-                    LOG.error("Could not read Choice, got EOF")
-                    raise Exit(Exit.READ_GOT_EOF)
+    choice = "ASK"
+    while choice not in sections:
+        sys.stderr.write("Select the Mozilla profile you wish to decrypt\n")
+        print_sections(sections)
+        try:
+            choice = input()
+        except EOFError:
+            LOG.error("Could not read Choice, got EOF")
+            raise Exit(Exit.READ_GOT_EOF)
 
     try:
         final_choice = sections[choice]
@@ -765,7 +793,7 @@ def ask_password(profile: str, interactive: bool) -> str:
     return passwd
 
 
-def read_profiles(basepath, list_profiles):
+def read_profiles(basepath):
     """
     Parse Firefox profiles in provided location.
     If list_profiles is true, will exit after listing available profiles.
@@ -784,15 +812,10 @@ def read_profiles(basepath, list_profiles):
 
     LOG.debug("Read profiles %s", profiles.sections())
 
-    if list_profiles:
-        LOG.debug("Listing available profiles...")
-        print_sections(get_sections(profiles), sys.stdout)
-        raise Exit(0)
-
     return profiles
 
 
-def get_profile(basepath, interactive, choice, list_profiles):
+def get_profile(basepath: str, interactive: bool, choice: Optional[str], list_profiles: bool):
     """
     Select profile to use by either reading profiles.ini or assuming given
     path is already a profile
@@ -801,7 +824,8 @@ def get_profile(basepath, interactive, choice, list_profiles):
     If list_profiles is true will exits after listing all available profiles.
     """
     try:
-        profiles = read_profiles(basepath, list_profiles)
+        profiles: ConfigParser = read_profiles(basepath)
+
     except Exit as e:
         if e.exitcode == Exit.MISSING_PROFILEINI:
             LOG.warning("Continuing and assuming '%s' is a profile location", basepath)
@@ -817,26 +841,31 @@ def get_profile(basepath, interactive, choice, list_profiles):
         else:
             raise
     else:
-        if not interactive:
-            sections = get_sections(profiles)
+        if list_profiles:
+            LOG.debug("Listing available profiles...")
+            print_sections(get_sections(profiles), sys.stdout)
+            raise Exit(Exit.CLEAN)
 
-            if choice and len(choice) == 1:
-                try:
-                    section = sections[(choice[0])]
-                except KeyError:
-                    LOG.error("Profile No. %s does not exist!", choice[0])
-                    raise Exit(Exit.NO_SUCH_PROFILE)
+        sections = get_sections(profiles)
 
-            elif len(sections) == 1:
-                section = sections['1']
+        if len(sections) == 1:
+            section = sections["1"]
 
-            else:
-                LOG.error("Don't know which profile to decrypt. "
-                          "We are in non-interactive mode and -c/--choice is missing.")
-                raise Exit(Exit.MISSING_CHOICE)
+        elif choice is not None:
+            try:
+                section = sections[choice]
+            except KeyError:
+                LOG.error("Profile No. %s does not exist!", choice)
+                raise Exit(Exit.NO_SUCH_PROFILE)
+
+        elif not interactive:
+            LOG.error("Don't know which profile to decrypt. "
+                      "We are in non-interactive mode and -c/--choice wasn't specified.")
+            raise Exit(Exit.MISSING_CHOICE)
+
         else:
             # Ask user which profile to open
-            section = ask_section(profiles, choice)
+            section = ask_section(sections)
 
         section = section
         profile = os.path.join(basepath, section)
@@ -848,7 +877,21 @@ def get_profile(basepath, interactive, choice, list_profiles):
     return profile
 
 
-def parse_sys_args():
+# From https://bugs.python.org/msg323681
+class ConvertChoices(argparse.Action):
+    """Argparse action that interprets the `choices` argument as a dict
+    mapping the user-specified choices values to the resulting option
+    values.
+    """
+    def __init__(self, *args, choices, **kwargs):
+        super().__init__(*args, choices=choices.keys(), **kwargs)
+        self.mapping = choices
+
+    def __call__(self, parser, namespace, value, option_string=None):
+        setattr(namespace, self.dest, self.mapping[value])
+
+
+def parse_sys_args() -> argparse.Namespace:
     """Parse command line arguments
     """
 
@@ -862,47 +905,84 @@ def parse_sys_args():
     parser = argparse.ArgumentParser(
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
     )
-    parser.add_argument("profile", nargs="?", default=profile_path,
-                        help=f"Path to profile folder (default: {profile_path})")
-    parser.add_argument("-e", "--export-pass", action="store_true",
-                        help="Export URL, username and password to pass from passwordstore.org")
-    parser.add_argument("--pass-compat", action="store",
-                        choices={"default", "browserpass", "username"},
-                        default="default",
-                        help="Export username as is (default), or with one of the compatibility modes")
-    parser.add_argument("-p", "--pass-prefix", action="store", default="web",
-                        help="Prefix for export to pass from passwordstore.org (default: %(default)s)")
-    parser.add_argument("-m", "--pass-cmd", action="store", default="pass",
-                        help="Command/path to use when exporting to pass (default: %(default)s)")
-    parser.add_argument("-f", "--format", action="store", choices={"csv", "human", "json"},
-                        default="human", help="Format for the output.")
-    parser.add_argument("-d", "--delimiter", action="store", default=";",
-                        help="The delimiter for csv output")
-    parser.add_argument("-q", "--quotechar", action="store", default='"',
-                        help="The quote char for csv output")
-    parser.add_argument("-t", "--tabular", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("-n", "--no-interactive", dest="interactive",
-                        default=True, action="store_false",
-                        help="Disable interactivity.")
-    parser.add_argument("-c", "--choice", nargs=1,
-                        help="The profile to use (starts with 1). If only one profile, defaults to that.")
-    parser.add_argument("-l", "--list", action="store_true",
-                        help="List profiles and exit.")
-    parser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
-    parser.add_argument("--version", action="version", version=__version__,
-                        help="Display version of firefox_decrypt and exit")
+    parser.add_argument(
+        "profile",
+        nargs="?", default=profile_path,
+        help=f"Path to profile folder (default: {profile_path})")
+
+    format_choices = {
+        "human": HumanOutputFormat,
+        "json": JSONOutputFormat,
+        "csv": CSVOutputFormat,
+        "tabular": TabularOutputFormat,
+        "pass": PassOutputFormat,
+    }
+
+    parser.add_argument(
+        "-f", "--format",
+        action=ConvertChoices,
+        choices=format_choices, default=HumanOutputFormat,
+        help="Format for the output.")
+    parser.add_argument(
+        "-d", "--csv-delimiter",
+        action="store",
+        default=";",
+        help="The delimiter for csv output")
+    parser.add_argument(
+        "-q", "--csv-quotechar",
+        action="store",
+        default='"',
+        help="The quote char for csv output")
+    parser.add_argument(
+        "--no-csv-header",
+        action="store_false", dest="csv_header",
+        default=True,
+        help="Do not include a header in CSV output.")
+    parser.add_argument(
+        "--pass-username-prefix",
+        action="store",
+        default="",
+        help=(
+            "Export username as is (default), or with the provided format prefix. "
+            "For instance 'login: ' for browserpass."
+        ))
+    parser.add_argument(
+        "-p", "--pass-prefix",
+        action="store",
+        default="web",
+        help="Folder prefix for export to pass from passwordstore.org (default: %(default)s)")
+    parser.add_argument(
+        "-m", "--pass-cmd",
+        action="store",
+        default="pass",
+        help="Command/path to use when exporting to pass (default: %(default)s)")
+    parser.add_argument(
+        "-n", "--no-interactive",
+        action="store_false", dest="interactive",
+        default=True,
+        help="Disable interactivity.")
+    parser.add_argument(
+        "-c", "--choice",
+        help="The profile to use (starts with 1). If only one profile, defaults to that.")
+    parser.add_argument(
+        "-l", "--list",
+        action="store_true",
+        help="List profiles and exit.")
+    parser.add_argument(
+        "-v", "--verbose",
+        action="count",
+        default=0,
+        help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
+    parser.add_argument(
+        "--version",
+        action="version", version=__version__,
+        help="Display version of firefox_decrypt and exit")
 
     args = parser.parse_args()
 
-    # replace character you can't enter as argument
-    if args.delimiter == "\\t":
-        args.delimiter = "\t"
-
-    if args.tabular:
-        args.format = "csv"
-        args.delimiter = "\t"
-        args.quotechar = "'"
+    # understand `\t` as tab character if specified as delimiter.
+    if args.csv_delimiter == "\\t":
+        args.csv_delimiter = "\t"
 
     return args
 
@@ -948,27 +1028,16 @@ def main() -> None:
 
     setup_logging(args)
 
-    if args.tabular:
-        LOG.warning("--tabular is deprecated. Use `--format csv --delimiter \\t` instead")
-
-    encoding: Optional[str] = locale.getlocale()[1]
-
-    if encoding is None:
-        LOG.error("Could not determine which encoding/locale to use for NSS interaction. "
-                  "This configuration is unsupported. "
-                  "Please search online how to 'configure locale in <your operating system>' "
-                  "and try again.")
-        raise Exit(Exit.BAD_LOCALE)
-
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
-    LOG.debug("Running with encodings: stdin: %s, locale: %s", sys.stdin.encoding, encoding)
+    LOG.debug(
+        "Running with encodings: stdin: %s, locale: %s",
+        sys.stdin.encoding,
+        identify_system_locale(),
+    )
 
-    # Check whether pass from passwordstore.org is installed
-    test_password_store(args.export_pass, args.pass_cmd)
-
-    # Initialize nss before asking the user for input
-    nss = NSSInteraction(encoding=encoding)
+    # Load Mozilla profile and initialize NSS before asking the user for input
+    moz = MozillaInteraction()
 
     basepath = os.path.expanduser(args.profile)
 
@@ -976,29 +1045,18 @@ def main() -> None:
     profile = get_profile(basepath, args.interactive, args.choice, args.list)
 
     # Start NSS for selected profile
-    nss.load_profile(profile)
+    moz.load_profile(profile)
     # Check if profile is password protected and prompt for a password
-    nss.authenticate(args.interactive)
+    moz.authenticate(args.interactive)
     # Decode all passwords
-    to_export = nss.decrypt_passwords(
-        export=args.export_pass,
-        output_format=args.format,
-        csv_delimiter=args.delimiter,
-        csv_quotechar=args.quotechar,
-    )
+    outputs = moz.decrypt_passwords()
 
-    if args.export_pass:
-        # List of compatibility modes for username prefixes
-        compat = {
-            "username": "username: ",
-            "browserpass": "login: ",
-        }
+    # Export passwords into one of many formats
+    formatter = args.format(outputs, args)
+    formatter.output()
 
-        username_prefix = compat.get(args.pass_compat, "")
-        export_pass(to_export, args.pass_cmd, args.pass_prefix, username_prefix)
-
-    # And shutdown NSS
-    nss.unload_profile()
+    # Finally shutdown NSS
+    moz.unload_profile()
 
 
 if __name__ == "__main__":
