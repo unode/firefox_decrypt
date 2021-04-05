@@ -26,6 +26,7 @@ import logging
 import locale
 import os
 import select
+import platform
 import sqlite3
 import sys
 import shutil
@@ -38,6 +39,7 @@ from typing import Optional, NewType
 
 LOG: logging.Logger
 VERBOSE = False
+SYSTEM = platform.system()
 SYS64 = sys.maxsize > 2**32
 
 ExportDict = NewType("ExportDict", dict[str, dict[str, str]])
@@ -199,7 +201,7 @@ def find_nss(locations, nssname):
         nsslib = os.path.join(loc, nssname)
         LOG.debug("Loading NSS library from %s", nsslib)
 
-        if os.name == "nt":
+        if SYSTEM == "Windows":
             # On windows in order to find DLLs referenced by nss3.dll
             # we need to have those locations on PATH
             os.environ["PATH"] = ';'.join([loc, os.environ["PATH"]])
@@ -216,14 +218,14 @@ def find_nss(locations, nssname):
                 os.chdir(loc)
 
         try:
-            nss = ct.CDLL(nsslib)
+            nss: ct.CDLL = ct.CDLL(nsslib)
         except OSError as e:
             fail_errors.append((nsslib, str(e)))
         else:
             LOG.debug("Loaded NSS library from %s", nsslib)
             return nss
         finally:
-            if os.name == "nt" and loc:
+            if SYSTEM == "Windows" and loc:
                 # Restore workdir changed above
                 os.chdir(workdir)
 
@@ -250,7 +252,7 @@ def find_nss(locations, nssname):
 def load_libnss():
     """Load libnss into python using the CDLL interface
     """
-    if os.name == "nt":
+    if SYSTEM == "Windows":
         nssname = "nss3.dll"
         if SYS64:
             locations: list[str] = [
@@ -285,7 +287,7 @@ def load_libnss():
                 nsslocation: str = os.path.join(os.path.dirname(location), nssname)
                 locations.append(nsslocation)
 
-    elif os.uname()[0] == "Darwin":
+    elif SYSTEM == "Darwin":
         nssname = "libnss3.dylib"
         locations = (
             "",  # Current directory or system lib finder
@@ -840,7 +842,7 @@ def parse_sys_args():
     """Parse command line arguments
     """
 
-    if os.name == "nt":
+    if SYSTEM == "Windows":
         profile_path = os.path.join(os.environ['APPDATA'], "Mozilla", "Firefox")
     elif os.uname()[0] == "Darwin":
         profile_path = "~/Library/Application Support/Firefox"
