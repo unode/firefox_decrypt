@@ -32,7 +32,7 @@ import sys
 import shutil
 from base64 import b64decode
 from getpass import getpass
-from subprocess import PIPE, Popen, DEVNULL
+from subprocess import run, PIPE, DEVNULL
 from urllib.parse import urlparse
 from configparser import ConfigParser
 from typing import Optional, NewType
@@ -58,16 +58,14 @@ def get_version() -> str:
         return '.'.join(map(str, __version_info__[:3])) + ''.join(__version_info__[3:])
 
     try:
-        p = Popen(["git", "describe", "--tags"], stdout=PIPE, stderr=DEVNULL, text=True)
-    except OSError:
+        p = run(["git", "describe", "--tags"], stdout=PIPE, stderr=DEVNULL, text=True)
+    except FileNotFoundError:
         return internal_version()
-
-    stdout, _ = p.communicate()
 
     if p.returncode:
         return internal_version()
     else:
-        return stdout.strip()
+        return p.stdout.strip()
 
 
 __version_info__ = (0, 9, 0, "+git")
