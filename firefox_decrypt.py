@@ -81,6 +81,7 @@ class NotFoundError(Exception):
 class Exit(Exception):
     """Exception to allow a clean exit from any point in execution
     """
+    CLEAN = 0
     ERROR = 1
     MISSING_PROFILEINI = 2
     MISSING_SECRETS = 3
