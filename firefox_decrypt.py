@@ -35,7 +35,7 @@ from getpass import getpass
 from subprocess import run, PIPE, DEVNULL
 from urllib.parse import urlparse
 from configparser import ConfigParser
-from typing import Optional, NewType
+from typing import Optional, Iterator, Any
 
 LOG: logging.Logger
 VERBOSE = False
@@ -116,7 +116,7 @@ class Exit(Exception):
         return f"Premature program exit with exit code {self.exitcode}"
 
 
-class Credentials(object):
+class Credentials:
     """Base credentials backend manager
     """
     def __init__(self, db):
@@ -128,7 +128,7 @@ class Credentials(object):
 
         LOG.info("Using %s for credentials.", db)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, str, str, int]]:
         pass
 
     def done(self):
@@ -149,7 +149,7 @@ class SqliteCredentials(Credentials):
         self.conn = sqlite3.connect(db)
         self.c = self.conn.cursor()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, str, str, int]]:
         LOG.debug("Reading password database in SQLite format")
         self.c.execute("SELECT hostname, encryptedUsername, encryptedPassword, encType "
                        "FROM moz_logins")
@@ -174,7 +174,7 @@ class JsonCredentials(Credentials):
 
         super(JsonCredentials, self).__init__(db)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[tuple[str, str, str, int]]:
         with open(self.db) as fh:
             LOG.debug("Reading password database in JSON format")
             data = json.load(fh)
@@ -190,10 +190,10 @@ class JsonCredentials(Credentials):
                        i["encryptedPassword"], i["encType"])
 
 
-def find_nss(locations, nssname):
+def find_nss(locations, nssname) -> ct.CDLL:
     """Locate nss is one of the many possible locations
     """
-    fail_errors = []
+    fail_errors: list[tuple[str, str]] = []
 
     for loc in locations:
         nsslib = os.path.join(loc, nssname)
