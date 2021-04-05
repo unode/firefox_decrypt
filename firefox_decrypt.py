@@ -25,7 +25,6 @@ import json
 import logging
 import locale
 import os
-import select
 import platform
 import sqlite3
 import sys
@@ -749,22 +748,19 @@ def ask_section(profiles, choice_arg):
     return final_choice
 
 
-def ask_password(profile, interactive):
+def ask_password(profile: str, interactive: bool) -> str:
     """
     Prompt for profile password
     """
+    passwd: str
     passmsg = f"\nMaster Password for profile {profile}: "
 
     if sys.stdin.isatty() and interactive:
         passwd = getpass(passmsg)
-
     else:
+        sys.stderr.write("Reading Master password from standard input:\n")
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
-        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-            passwd = sys.stdin.readline().rstrip("\n")
-        else:
-            LOG.warning("Master Password not provided, continuing with blank password")
-            passwd = ""
+        passwd = sys.stdin.readline().rstrip("\n")
 
     return passwd
 
