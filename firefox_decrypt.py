@@ -445,7 +445,7 @@ class NSSProxy:
                     )
 
             else:
-                LOG.warning("Attempting decryption with no Master Password")
+                LOG.info("No Master Password found - no authentication needed")
         finally:
             # Avoid leaking PK11KeySlot
             self._PK11_FreeSlot(keyslot)
