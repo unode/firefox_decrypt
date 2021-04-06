@@ -789,6 +789,7 @@ def ask_password(profile: str, interactive: bool) -> str:
         passwd = getpass(passmsg)
     else:
         sys.stderr.write("Reading Master password from standard input:\n")
+        sys.stderr.flush()
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
         passwd = sys.stdin.readline().rstrip("\n")
 
