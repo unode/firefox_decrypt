@@ -54,21 +54,21 @@ class TestCSV(unittest.TestCase):
     def test_firefox_20_tabular(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
-        cmd = lib.get_script() + [test, "--format", "csv", "--delimiter", "\t", "--quotechar", "'"]
+        cmd = lib.get_script() + [test, "--format", "tabular"]
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_tabular(output)
 
     def test_firefox_20_semicol(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
-        cmd = lib.get_script() + [test, "--format", "csv", "--delimiter", ";", "--quotechar", "'"]
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_semicol(output)
 
     def test_firefox_20_vertbar(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
-        cmd = lib.get_script() + [test, "--format", "csv", "--delimiter", "\t", "--quotechar", "|"]
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_vertbar(output)
 
@@ -82,21 +82,21 @@ class TestCSV(unittest.TestCase):
     def test_firefox_46_tabular(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
-        cmd = lib.get_script() + [test, "--format", "csv", "--delimiter", "\t", "--quotechar", "'"]
+        cmd = lib.get_script() + [test, "--format", "tabular"]
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_tabular(output)
 
     def test_firefox_46_semicol(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
-        cmd = lib.get_script() + [test, "--format", "csv", "--delimiter", ";", "--quotechar", "'"]
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_semicol(output)
 
     def test_firefox_46_vertbar(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
-        cmd = lib.get_script() + [test, "--format", "csv", "--delimiter", "\t", "--quotechar", "|"]
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_vertbar(output)
 
@@ -110,21 +110,21 @@ class TestCSV(unittest.TestCase):
     def test_firefox_nopassword_tabular(self):
         test = os.path.join(self.test, "test_profile_firefox_nopassword")
 
-        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--delimiter", "\t", "--quotechar", "'"]
+        cmd = lib.get_script() + [test, "-n", "--format", "tabular"]
         output = lib.run(cmd)
         self.validate_tabular(output)
 
     def test_firefox_nopassword_semicol(self):
         test = os.path.join(self.test, "test_profile_firefox_nopassword")
 
-        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--delimiter", ";", "--quotechar", "'"]
+        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
         output = lib.run(cmd)
         self.validate_semicol(output)
 
     def test_firefox_nopassword_vertbar(self):
         test = os.path.join(self.test, "test_profile_firefox_nopassword")
 
-        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--delimiter", "\t", "--quotechar", "|"]
+        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
         output = lib.run(cmd)
         self.validate_vertbar(output)
 
