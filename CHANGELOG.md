@@ -1,6 +1,9 @@
 #### Changelog
 
-##### 1.0.0
+##### 1.0.0-rc2
+-
+
+##### 1.0.0-rc1
 - Output formats have been internally refactored for easier extensibility.
   There is now 'human', 'csv', 'tabular', 'json' and 'pass'
 - This version hopefully fixes the long standing encoding issues in Windows and MacOSX
