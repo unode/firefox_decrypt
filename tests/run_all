@@ -8,9 +8,10 @@ import glob
 import argparse
 import logging
 import time
+import platform
 from multiprocessing import cpu_count
 from threading import Thread
-from subprocess import call, Popen, PIPE
+from subprocess import run, PIPE, CalledProcessError
 
 try:
     # python 2
@@ -20,6 +21,11 @@ except ImportError:
     from queue import Queue, Empty
 
 TIMEOUT = .2
+
+if platform.system() == "Windows":
+    CMD = ["python3"]
+else:
+    CMD = []
 
 
 def comment(text):
@@ -47,21 +53,21 @@ def run_test(testqueue, outqueue, threadname):
         failed = False
 
         try:
-            p = Popen(os.path.abspath(test), stdout=PIPE, stderr=PIPE,
-                      env=os.environ)
-            out, err = p.communicate()
+            p = run(CMD + [os.path.abspath(test)], capture_output=True,
+                    env=os.environ, text=True)
         except Exception as e:
             log.exception(e)
             failed = True
             reason = str(e)
+            out = ""
+            err = ""
         else:
             if p.returncode:
                 log.info("Test %s exitcode was %s. Tests shouldn't use exit code. They are expected to exit cleanly and output 'ok' or 'not ok'", test, p.returncode)
                 failed = True
                 reason = "Exit code was {0}".format(p.returncode)
-
-        if sys.version_info > (3,):
-            out, err = out.decode('utf-8'), err.decode('utf-8')
+            out = p.stdout
+            err = p.stderr
 
         test_head = "# {0}\n".format(os.path.basename(test))
 
@@ -200,7 +206,8 @@ class TestRunner(object):
         sys.stderr.flush()
 
         log.debug("Calling 'problems --summary' for report")
-        return call([os.path.abspath("problems"), "--summary", cmd_args.tapfile])
+        run(CMD + [os.path.abspath("problems"), "--summary", cmd_args.tapfile])
+        return
 
 
 def parse_args():
