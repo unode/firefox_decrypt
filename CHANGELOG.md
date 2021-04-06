@@ -1,7 +1,7 @@
 #### Changelog
 
-##### 1.0.0-rc2
--
+##### 1.0.0-rc1+git
+- 
 
 ##### 1.0.0-rc1
 - Output formats have been internally refactored for easier extensibility.
