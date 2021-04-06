@@ -7,7 +7,9 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu, macos ]
-        python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
+        # pypy3 not yet up to speed with py3.9 typing hints
+        # python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
+        python-version: [ 3.9, 3.10.0-alpha.6 ]
         firefox: [ 'latest-devedition', 'latest-esr', 'latest' ]
     steps:
       - uses: actions/checkout@v2
@@ -29,7 +31,9 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu, macos, windows ]
-        python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
+        # pypy3 not yet up to speed with py3.9 typing hints
+        # python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
+        python-version: [ 3.9, 3.10.0-alpha.6 ]
         firefox: [ '87.0' ]
     steps:
       - uses: actions/checkout@v2
