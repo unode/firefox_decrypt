@@ -2,32 +2,30 @@
 
 ![GitHub Actions status](https://github.com/unode/firefox_decrypt/actions/workflows/main.yml/badge.svg)
 
-**The master branch is unstable during migration to Python 3.**  
-
-If you must use Python 2, please try [Firefox Decrypt 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0).  
-
+As of 1.0.0-rc1 Python 3.9+ is required. Python 2 is no longer supported.
 If you encounter a problem, try the latest [release](https://github.com/unode/firefox_decrypt/releases) or check open issues for ongoing work.
+
+If you definitely need to use Python 2, [Firefox Decrypt 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0) is your best bet, although no longer supported.
 
 #### About
 
-**Firefox Decrypt** is a tool to extract passwords from profiles of Mozilla (Fire/Water)fox™, Thunderbird®, SeaMonkey® and some derivates.
+**Firefox Decrypt** is a tool to extract passwords from profiles of Mozilla (Fire/Water)fox™, Thunderbird®, SeaMonkey® and derivates.
 
 It can be used to recover passwords from a profile protected by a Master Password as long as the latter is known.
-If a profile is not protected by a Master Password, a password will still be requested but can be left blank.
+If a profile is not protected by a Master Password, passwords are displayed without prompt.
 
 This tool does not try to crack or brute-force the Master Password in any way.
 If the Master Password is not known it will simply fail to recover any data.
 
-This script is written in Python and is compatible with versions ~~2.7+~~ (last is [0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0)) and 3.6+. On Windows, only Python 3 is supported.
-
-Additionally, it requires access to libnss3 which is included with Firefox and
-Thunderbird, although depending on system configuration, the script may fail to
-locate the library or may load an incorrect/incompatible version.
+It requires access to libnss3, included with most Mozilla products.
+The script is usually able to find a compatible library but may in some cases
+load an incorrect/incompatible version. If you encounter this situation please file a bug report.
 
 Alternatively, you can install libnss3 (Debian/Ubuntu) or nss (Arch/Gentoo/…).
 libnss3 is part of https://developer.mozilla.org/docs/Mozilla/Projects/NSS
 
-If you need to decode passwords from Firefox 3 or older, this is not officially supported but a patch exists in [this pull request](https://github.com/unode/firefox_decrypt/pull/36).
+If you need to decode passwords from Firefox 3 or older, although not officially supported,
+there is a patch in [this pull request](https://github.com/unode/firefox_decrypt/pull/36).
 
 
 #### Usage
@@ -42,8 +40,8 @@ The tool will present a numbered list of profiles. Enter the relevant number.
 
 Then, a prompt to enter the *master password* for the profile: 
 
-- if no password was set, enter nothing – simply key <kbd>Return</kbd> or <kbd>Enter</kbd>
-- if a password was set and is known, enter it
+- if no password was set, no master password will be asked.
+- if a password was set and is known, enter it and hit key <kbd>Return</kbd> or <kbd>Enter</kbd>
 - if a password was set and is no longer known, you can not proceed
 
 #### Advanced usage
@@ -61,32 +59,51 @@ python firefox_decrypt.py | grep -C2 keyword
 ```
 where `keyword` is part of the expected output (URL, username, email, password …)
 
-Since version **0.7.0** passwords may be exported in CSV format using the `--format` flag.
+You can also choose from one of the supported formats with `--format`:
+
+* `human` - a format displaying one record for every 3 lines
+* `csv` - a spreadsheet-like format. See also `--csv-*` options for additional control.
+* `tabular` - similar to csv but producing a tab-delimited (`tsv`) file instead.
+* `json` - a machine compatible format - see [JSON](https://en.wikipedia.org/wiki/JSON)
+* `pass` - a special output format that directly calls to the [passwordstore.org](https://www.passwordstore.org) command to export passwords (*). See also `--pass-*` options.
+
+(*) `pass` can produce unintended consequences. Make sure to backup your password store before using this.
+
+##### Format CSV
+
+Passwords may be exported in CSV format using the `--format` flag.
 
 ```
 python firefox_decrypt.py --format csv
 ```
 
-Additionally, `--delimiter` and `--quotechar` flags can specify which characters to use as delimiters and quote characters in the CSV output.
+Additionally, `--csv-delimiter` and `--csv-quotechar` flags can specify which characters to use as delimiters and quote characters in the CSV output.
 
-Since version **0.4** it is possible to export stored passwords to *pass* from <http://passwordstore.org/>. To do so, use:
+##### Format Pass - Passwordstore
+
+Stored passwords can be exported to [`pass`](http://passwordstore.org) (from passwordstore.org) using:
 
 ```
-python firefox_decrypt.py --export-pass
+python firefox_decrypt.py --format pass
 ```
 
-and **all** existing passwords will be exported after the pattern `web/<address>[:<port>]` unless multiple credentials exist for the same website in which case `/<login>` is appended. The username will be on a second line.
+**All** existing passwords will be exported after the pattern `web/<address>[:<port>]`.
+If multiple credentials exist for the same website `/<login>` is appended.
+By `pass` convention, the password will be on the first and the username on the second line.
 
 To prefix the username with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension, you can use:
 ```
-python firefox_decrypt.py --export-pass --pass-compat browserpass
+python firefox_decrypt.py --format pass --pass-username-prefix 'login: '
 ```
 
 There is currently no way to selectively export passwords.
 
 Exporting will overwrite existing passwords without warning. Ensure you have a backup or are using the `pass git` functionality.
 
-Starting with version **0.5.2** it is now possible to use a non-interactive mode which bypasses all prompts, including profile choice and master password. Use it with `-n/--no-interactive`. Indicate your profile choice by passing `-c/--choice N` where N is the number of the profile you wish to decrypt (starting from **1**).
+#### Non-interactive mode
+
+A non-interactive mode which bypasses all prompts, including profile choice and master password, can be enabled with `-n/--no-interactive`.
+If you have multiple Mozilla profiles, make sure to also indicate your profile choice by passing `-c/--choice N` where N is the number of the profile you wish to decrypt (starting from **1**).
 
 You can list all available profiles with `-l/--list` (to stdout).
 
