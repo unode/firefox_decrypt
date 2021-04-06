@@ -206,8 +206,7 @@ class TestRunner(object):
         sys.stderr.flush()
 
         log.debug("Calling 'problems --summary' for report")
-        run(CMD + [os.path.abspath("problems"), "--summary", cmd_args.tapfile])
-        return
+        return run(CMD + [os.path.abspath("problems"), "--summary", cmd_args.tapfile]).returncode
 
 
 def parse_args():
