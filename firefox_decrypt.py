@@ -588,6 +588,8 @@ class HumanOutputFormat(OutputFormat):
 class JSONOutputFormat(OutputFormat):
     def output(self):
         sys.stdout.write(json.dumps(self.pwstore, indent=2))
+        # Json dumps doesn't add the final newline
+        sys.stdout.write("\n")
 
 
 class CSVOutputFormat(OutputFormat):
