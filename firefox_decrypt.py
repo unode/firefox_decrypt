@@ -1010,7 +1010,7 @@ def setup_logging(args) -> None:
 
 
 def identify_system_locale() -> str:
-    encoding: Optional[str] = locale.getlocale()[1]
+    encoding: Optional[str] = locale.getpreferredencoding()
 
     if encoding is None:
         LOG.error(
