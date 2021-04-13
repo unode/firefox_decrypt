@@ -253,6 +253,11 @@ def load_libnss():
         if SYS64:
             locations: list[str] = [
                 "",  # Current directory or system lib finder
+                os.path.expanduser("~\\AppData\\Local\\Mozilla Firefox"),
+                os.path.expanduser("~\\AppData\\Local\\Mozilla Thunderbird"),
+                os.path.expanduser("~\\AppData\\Local\\Nightly"),
+                os.path.expanduser("~\\AppData\\Local\\SeaMonkey"),
+                os.path.expanduser("~\\AppData\\Local\\Waterfox"),
                 "C:\\Program Files\\Mozilla Firefox",
                 "C:\\Program Files\\Mozilla Thunderbird",
                 "C:\\Program Files\\Nightly",
@@ -268,6 +273,11 @@ def load_libnss():
                 "C:\\Program Files (x86)\\SeaMonkey",
                 "C:\\Program Files (x86)\\Waterfox",
                 # On windows 32bit these folders can also be 32bit
+                os.path.expanduser("~\\AppData\\Local\\Mozilla Firefox"),
+                os.path.expanduser("~\\AppData\\Local\\Mozilla Thunderbird"),
+                os.path.expanduser("~\\AppData\\Local\\Nightly"),
+                os.path.expanduser("~\\AppData\\Local\\SeaMonkey"),
+                os.path.expanduser("~\\AppData\\Local\\Waterfox"),
                 "C:\\Program Files\\Mozilla Firefox",
                 "C:\\Program Files\\Mozilla Thunderbird",
                 "C:\\Program Files\\Nightly",
