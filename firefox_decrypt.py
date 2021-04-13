@@ -40,12 +40,18 @@ LOG: logging.Logger
 VERBOSE = False
 SYSTEM = platform.system()
 SYS64 = sys.maxsize > 2**32
+DEFAULT_ENCODING = "UTF-8"
 
 PWStore = list[dict[str, str]]
 
-# Windows codec used to interact with dll's depends on the
-# system's locale (and language)
-# In Linux/Mac UTF-8 is a safe assumption
+# NOTE: In 1.0.0-rc1 we tried to use locale information to encode/decode
+# content passed to NSS. This was an attempt to address the encoding issues
+# affecting Windows. However after additional testing Python now also defaults
+# to UTF-8 for encoding.
+# Some of the limitations of Windows have to do with poor support for UTF-8
+# characters in cmd.exe. Terminal - https://github.com/microsoft/terminal or
+# a Bash shell such as Git Bash - https://git-scm.com/downloads are known to
+# provide a better user experience and are therefore recommended
 
 
 def get_version() -> str:
@@ -344,7 +350,7 @@ def load_libnss():
 class c_char_p_fromstr(ct.c_char_p):
     """ctypes char_p override that handles encoding str to bytes"""
     def from_param(self):
-        return self.encode(identify_system_locale())
+        return self.encode(DEFAULT_ENCODING)
 
 
 class NSSProxy:
@@ -359,7 +365,7 @@ class NSSProxy:
 
         def decode_data(self):
             _bytes = ct.string_at(self.data, self.len)
-            return _bytes.decode(identify_system_locale())
+            return _bytes.decode(DEFAULT_ENCODING)
 
     class PK11SlotInfo(ct.Structure):
         """Opaque structure representing a logical PKCS slot
@@ -396,7 +402,7 @@ class NSSProxy:
         # Transparently handle decoding to string when returning a c_char_p
         if restype == ct.c_char_p:
             def _decode(result, func, *args):
-                return result.decode(identify_system_locale())
+                return result.decode(DEFAULT_ENCODING)
             res.errcheck = _decode
 
         setattr(self, "_" + name, res)
@@ -1044,8 +1050,9 @@ def main() -> None:
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
     LOG.debug(
-        "Running with encodings: stdin: %s, locale: %s",
+        "Running with encodings: stdin: %s, stdout: %s, locale: %s",
         sys.stdin.encoding,
+        sys.stdout.encoding,
         identify_system_locale(),
     )
 
