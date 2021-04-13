@@ -6,11 +6,11 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [ ubuntu, macos ]
+        os: [ubuntu, macos]
         # pypy3 not yet up to speed with py3.9 typing hints
         # python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
-        python-version: [ 3.9, 3.10.0-alpha.6 ]
-        firefox: [ 'latest-devedition', 'latest-esr', 'latest' ]
+        python-version: [3.9, 3.10.0-alpha.6]
+        firefox: ['latest-esr', 'latest', 'latest-devedition']
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
@@ -30,11 +30,11 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [ ubuntu, macos, windows ]
+        os: [ubuntu, macos, windows]
         # pypy3 not yet up to speed with py3.9 typing hints
         # python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
-        python-version: [ 3.9, 3.10.0-alpha.6 ]
-        firefox: [ '87.0' ]
+        python-version: [3.9, 3.10.0-alpha.6]
+        firefox: ['87.0']
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
