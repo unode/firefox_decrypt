@@ -1,6 +1,6 @@
 # simpletap - "Simple" TAP output with unittest
 #
-# Copyright (c) 2014-2016 Renato Alves
+# Copyright (c) 2014-2021 Renato Alves
 #
 # This code is released under the MIT license.
 # Refer to LICENSE for further details.
