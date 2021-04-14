@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import unittest
 from simpletap.fdecrypt import lib
 
@@ -29,21 +30,21 @@ class TestJSON(unittest.TestCase):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
         cmd = lib.get_script() + [test, "--format", "json"]
-        output = lib.run(cmd, stdin=self.pwd, stderr=None)
+        output = lib.run(cmd, stdin=self.pwd, stderr=sys.stderr)
         self.validate_default(output)
 
     def test_firefox_46_default(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
         cmd = lib.get_script() + [test, "--format", "json"]
-        output = lib.run(cmd, stdin=self.pwd, stderr=None)
+        output = lib.run(cmd, stdin=self.pwd, stderr=sys.stderr)
         self.validate_default(output)
 
     def test_firefox_nopassword_default(self):
         test = os.path.join(self.test, "test_profile_firefox_nopassword")
 
         cmd = lib.get_script() + [test, "-n", "--format", "json"]
-        output = lib.run(cmd, stderr=None)
+        output = lib.run(cmd, stderr=sys.stderr)
         self.validate_default(output)
 
 
