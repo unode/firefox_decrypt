@@ -52,8 +52,8 @@ if __name__ == "__main__":
     unexpected = defaultdict(int)
     passed = defaultdict(int)
 
-    file = re.compile("^# (?:./)?(\S+\.t)(?:\.exe)?$")
-    timestamp = re.compile("^# (\d+(?:\.\d+)?) ==>.*$")
+    file = re.compile(r"^# (?:./)?(\S+\.t)(?:\.exe)?$")
+    timestamp = re.compile(r"^# (\d+(?:\.\d+)?) ==>.*$")
     start = None
     stop = None
 
@@ -85,6 +85,9 @@ if __name__ == "__main__":
 
         # Last line contains the ending timestamp
         stop = float(timestamp.match(line).group(1))
+
+    if start is None:
+        start = 0
 
     # Remove expected failures from the skipped tests category
     for filename, value in expected.items():
