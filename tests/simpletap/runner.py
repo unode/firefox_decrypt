@@ -39,7 +39,7 @@ class TAPTestRunner(unittest.runner.TextTestRunner):
                     warnings.filterwarnings(
                         'module',
                         category=DeprecationWarning,
-                        message='Please use assert\w+ instead.')
+                        message='Please use assert\\w+ instead.')
             startTestRun = getattr(result, 'startTestRun', None)
             if startTestRun is not None:
                 result.total_tests = test.countTestCases()
