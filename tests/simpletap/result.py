@@ -134,12 +134,16 @@ class TAPTestResult(unittest.result.TestResult):
         if status:
 
             if status == "SKIP":
-                self.stream.writeln("{0} {1} - {2}: {3}".format(
-                    _color("skip", "yellow"), self.testsRun, filename, desc)
+                self.stream.writeln("{0} {1} - {2}: {3} # skip".format(
+                    _color("ok", "yellow"), self.testsRun, filename, desc)
                 )
             elif status == "EXPECTED_FAILURE":
-                self.stream.writeln("{0} {1} - {2}: {3}".format(
-                    _color("skip", "yellow"), self.testsRun, filename, desc)
+                self.stream.writeln("{0} {1} - {2}: {3} # TODO".format(
+                    _color("ok", "yellow"), self.testsRun, filename, desc)
+                )
+            elif status == "UNEXPECTED_SUCCESS":
+                self.stream.writeln("{0} {1} - {2}: {3} # FIXED".format(
+                    _color("not ok", "yellow"), self.testsRun, filename, desc)
                 )
             else:
                 self.stream.writeln("{0} {1} - {2}: {3}".format(

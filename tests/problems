@@ -78,7 +78,7 @@ if __name__ == "__main__":
             if line.startswith("not "):
                 errors[filename] += 1
 
-            if line.startswith("skip "):
+            if line.startswith("# SKIP:"):
                 skipped[filename] += 1
 
             if line.startswith("# EXPECTED_FAILURE:"):
