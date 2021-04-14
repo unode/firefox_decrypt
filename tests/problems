@@ -61,7 +61,11 @@ if __name__ == "__main__":
         for line in fh:
             if start is None:
                 # First line contains the starting timestamp
-                start = float(timestamp.match(line).group(1))
+                match = timestamp.match(line)
+                if match:
+                    start = float(match.group(1))
+                else:
+                    start = 0
                 continue
 
             match = file.match(line)
@@ -84,7 +88,11 @@ if __name__ == "__main__":
                 unexpected[filename] += 1
 
         # Last line contains the ending timestamp
-        stop = float(timestamp.match(line).group(1))
+        match = timestamp.match(line)
+        if match:
+            stop = float(match.group(1))
+        else:
+            stop = 0
 
     if start is None:
         start = 0
