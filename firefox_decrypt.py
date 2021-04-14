@@ -199,18 +199,20 @@ def find_nss(locations, nssname) -> ct.CDLL:
     """
     fail_errors: list[tuple[str, str]] = []
 
+    OS = ("Windows", "Darwin")
+
     for loc in locations:
         nsslib = os.path.join(loc, nssname)
         LOG.debug("Loading NSS library from %s", nsslib)
 
-        if SYSTEM == "Windows":
+        if SYSTEM in OS:
             # On windows in order to find DLLs referenced by nss3.dll
             # we need to have those locations on PATH
             os.environ["PATH"] = ';'.join([loc, os.environ["PATH"]])
             LOG.debug("PATH is now %s", os.environ["PATH"])
             # However this doesn't seem to work on all setups and needs to be
             # set before starting python so as a workaround we chdir to
-            # Firefox's nss3.dll location
+            # Firefox's nss3.dll/libnss3.dylib location
             if loc:
                 if not os.path.isdir(loc):
                     # No point in trying to load from paths that don't exist
@@ -227,7 +229,7 @@ def find_nss(locations, nssname) -> ct.CDLL:
             LOG.debug("Loaded NSS library from %s", nsslib)
             return nss
         finally:
-            if SYSTEM == "Windows" and loc:
+            if SYSTEM in OS and loc:
                 # Restore workdir changed above
                 os.chdir(workdir)
 
@@ -310,6 +312,10 @@ def load_libnss():
             "/sw/lib/mozilla",
             "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
             "/opt/pkg/lib/nss",  # installed via pkgsrc
+            "/Applications/Firefox.app/Contents/MacOS",  # default manual install location
+            "/Applications/Thunderbird.app/Contents/MacOS",
+            "/Applications/SeaMonkey.app/Contents/MacOS",
+            "/Applications/Waterfox.app/Contents/MacOS",
         )
 
     else:

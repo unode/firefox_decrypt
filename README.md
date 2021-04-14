@@ -167,9 +167,14 @@ Both Python and Firefox must be either 32-bit or 64-bit.
 
 If you mix architectures the code will fail. More information on issue [#8](https://github.com/unode/firefox_decrypt/issues/8).
 
-##### Darwin/macOS
+`cmd.exe` is not supported due to it's poor UTF-8 support.
+Use [Microsoft Terminal](https://github.com/microsoft/terminal) and install [UTF-8 compatible fonts](https://www.google.com/get/noto/).
 
-If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3`, consider installing `nss` using brew or an alternative package manager.
+##### MacOS/Darwin
+
+If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3`, consider installing `nss` using `brew` or an alternative package manager.
+
+While not supported, you may find that `DYLD_LIBRARY_PATH=. python3 firefox_decrypt.py` will work in some configurations.
 
 #### Testing
 
