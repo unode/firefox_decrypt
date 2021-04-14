@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import re
 import datetime
+import tempfile
 from subprocess import run, CalledProcessError, PIPE, STDOUT
 
 
@@ -11,10 +13,25 @@ class Test:
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
 
     def run(self, cmd, stdin=None, stderr=STDOUT, workdir=None):
-        p = run(cmd, check=True, encoding="utf8", cwd=workdir,
-                input=stdin, stdout=PIPE, stderr=stderr)
+        if stderr == sys.stderr:
+            with tempfile.NamedTemporaryFile(mode="w+t") as err:
+                try:
+                    p = run(cmd, check=True, encoding="utf8", cwd=workdir,
+                            input=stdin, stdout=PIPE, stderr=err)
+                except CalledProcessError as e:
+                    if e.returncode:
+                        err.flush()
+                        err.seek(0)
+                        sys.stderr.write(err.read())
+                    raise
 
-        return p.stdout
+                else:
+                    return p.stdout
+        else:
+            p = run(cmd, check=True, encoding="utf8", cwd=workdir,
+                    input=stdin, stdout=PIPE, stderr=stderr)
+
+            return p.stdout
 
     def run_error(self, cmd, returncode, stdin=None, stderr=STDOUT, workdir=None):
         try:
