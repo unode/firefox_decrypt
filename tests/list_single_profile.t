@@ -45,6 +45,6 @@ class TestSingleProfile(unittest.TestCase):
 
 if __name__ == "__main__":
     from simpletap import TAPTestRunner
-    unittest.main(testRunner=TAPTestRunner(buffer=True))
+    unittest.main(testRunner=TAPTestRunner(buffer=True), exit=False)
 
 # vim: ai sts=4 et sw=4
