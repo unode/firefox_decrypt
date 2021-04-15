@@ -1,0 +1,3 @@
+- WARNING - profile.ini not found in test_data/test_profile_firefox_59
+- WARNING - Continuing and assuming 'test_data/test_profile_firefox_59' is a profile location
+- ERROR - Listing single profiles not permitted.

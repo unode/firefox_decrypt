@@ -20,14 +20,23 @@ class TestSingleProfile(unittest.TestCase):
 
         self.assertEqual(output, expected)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20(self):
         self.test_profile = "test_profile_firefox_20"
         self.output_data = "list_single_20"
         self.listing_from_single_profile()
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46(self):
         self.test_profile = "test_profile_firefox_46"
         self.output_data = "list_single_46"
+        self.listing_from_single_profile()
+
+    def test_firefox_59(self):
+        self.test_profile = "test_profile_firefox_59"
+        self.output_data = "list_single_59"
         self.listing_from_single_profile()
 
 

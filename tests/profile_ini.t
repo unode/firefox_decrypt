@@ -22,6 +22,8 @@ class TestProfileIni(unittest.TestCase):
         self.validate_one("complex", "cömplex", out)
         self.validate_one("jamie", "jãmïe", out)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20(self):
         cmd = lib.get_script() + [self.test]
         choice = "1"
@@ -30,6 +32,8 @@ class TestProfileIni(unittest.TestCase):
         output = lib.run(cmd, stdin=payload)
         self.validate(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46(self):
         cmd = lib.get_script() + [self.test]
         choice = "2"
@@ -54,9 +58,18 @@ class TestProfileIni(unittest.TestCase):
         output = lib.run(cmd, stdin=payload)
         self.validate(output)
 
-    def test_firefox_nopass(self):
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopass_46(self):
         cmd = lib.get_script() + [self.test]
         payload = "3"
+
+        output = lib.run(cmd, stdin=payload)
+        self.validate(output)
+
+    def test_firefox_nopass_59(self):
+        cmd = lib.get_script() + [self.test]
+        payload = "6"
 
         output = lib.run(cmd, stdin=payload)
         self.validate(output)

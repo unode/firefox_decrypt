@@ -44,6 +44,8 @@ class TestCSV(unittest.TestCase):
         self.validate_one("complex_csv_tab_vertbar", "cömplex", out)
         self.validate_one("jamie_csv_tab_vertbar", "jãmïe", out)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20_default(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
@@ -51,6 +53,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_default(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20_tabular(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
@@ -58,6 +62,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_tabular(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20_semicol(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
@@ -65,6 +71,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_semicol(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20_vertbar(self):
         test = os.path.join(self.test, "test_profile_firefox_20")
 
@@ -72,6 +80,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_vertbar(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46_default(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
@@ -79,6 +89,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_default(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46_tabular(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
@@ -86,6 +98,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_tabular(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46_semicol(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
@@ -93,6 +107,8 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_semicol(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46_vertbar(self):
         test = os.path.join(self.test, "test_profile_firefox_46")
 
@@ -100,29 +116,93 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_vertbar(output)
 
-    def test_firefox_nopassword_default(self):
-        test = os.path.join(self.test, "test_profile_firefox_nopassword")
+    def test_firefox_59_default(self):
+        test = os.path.join(self.test, "test_profile_firefox_59")
+
+        cmd = lib.get_script() + [test, "--format", "csv"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_default(output)
+
+    def test_firefox_59_tabular(self):
+        test = os.path.join(self.test, "test_profile_firefox_59")
+
+        cmd = lib.get_script() + [test, "--format", "tabular"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_tabular(output)
+
+    def test_firefox_59_semicol(self):
+        test = os.path.join(self.test, "test_profile_firefox_59")
+
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_semicol(output)
+
+    def test_firefox_59_vertbar(self):
+        test = os.path.join(self.test, "test_profile_firefox_59")
+
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_vertbar(output)
+
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopassword_46_default(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_46")
 
         cmd = lib.get_script() + [test, "-n", "--format", "csv"]
         output = lib.run(cmd)
         self.validate_default(output)
 
-    def test_firefox_nopassword_tabular(self):
-        test = os.path.join(self.test, "test_profile_firefox_nopassword")
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopassword_46_tabular(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_46")
 
         cmd = lib.get_script() + [test, "-n", "--format", "tabular"]
         output = lib.run(cmd)
         self.validate_tabular(output)
 
-    def test_firefox_nopassword_semicol(self):
-        test = os.path.join(self.test, "test_profile_firefox_nopassword")
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopassword_46_semicol(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_46")
 
         cmd = lib.get_script() + [test, "-n", "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
         output = lib.run(cmd)
         self.validate_semicol(output)
 
-    def test_firefox_nopassword_vertbar(self):
-        test = os.path.join(self.test, "test_profile_firefox_nopassword")
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopassword_46_vertbar(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_46")
+
+        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
+        output = lib.run(cmd)
+        self.validate_vertbar(output)
+
+    def test_firefox_nopassword_59_default(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_59")
+
+        cmd = lib.get_script() + [test, "-n", "--format", "csv"]
+        output = lib.run(cmd)
+        self.validate_default(output)
+
+    def test_firefox_nopassword_59_tabular(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_59")
+
+        cmd = lib.get_script() + [test, "-n", "--format", "tabular"]
+        output = lib.run(cmd)
+        self.validate_tabular(output)
+
+    def test_firefox_nopassword_59_semicol(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_59")
+
+        cmd = lib.get_script() + [test, "-n", "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
+        output = lib.run(cmd)
+        self.validate_semicol(output)
+
+    def test_firefox_nopassword_59_vertbar(self):
+        test = os.path.join(self.test, "test_profile_firefox_nopassword_59")
 
         cmd = lib.get_script() + [test, "-n", "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
         output = lib.run(cmd)

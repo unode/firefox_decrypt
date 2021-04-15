@@ -18,6 +18,8 @@ class TestNonInteractiveChoice(unittest.TestCase):
         self.validate_one("complex", "cömplex", out)
         self.validate_one("jamie", "jãmïe", out)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-nc", "1"]
         pwd = lib.get_password()
@@ -25,6 +27,8 @@ class TestNonInteractiveChoice(unittest.TestCase):
         out = lib.run(cmd, stdin=pwd)
         self.validate(out)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-nc", "2"]
         pwd = lib.get_password()
@@ -32,8 +36,23 @@ class TestNonInteractiveChoice(unittest.TestCase):
         out = lib.run(cmd, stdin=pwd)
         self.validate(out)
 
-    def test_firefox_nopass(self):
+    def test_firefox_59(self):
+        cmd = lib.get_script() + [lib.get_test_data(), "-nc", "4"]
+        pwd = lib.get_password()
+
+        out = lib.run(cmd, stdin=pwd)
+        self.validate(out)
+
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopass_46(self):
         cmd = lib.get_script() + [lib.get_test_data(), "-nc", "3"]
+
+        out = lib.run(cmd)
+        self.validate(out)
+
+    def test_firefox_nopass_59(self):
+        cmd = lib.get_script() + [lib.get_test_data(), "-nc", "6"]
 
         out = lib.run(cmd)
         self.validate(out)

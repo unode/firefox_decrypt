@@ -5,12 +5,14 @@ import sys
 import re
 import datetime
 import tempfile
+import platform
 from subprocess import run, CalledProcessError, PIPE, STDOUT
 
 
 class Test:
     def __init__(self):
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
+        self.platform = platform.system()
 
     def run(self, cmd, stdin=None, stderr=STDOUT, workdir=None):
         if stderr == sys.stderr:

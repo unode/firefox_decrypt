@@ -33,14 +33,23 @@ class TestDirectProfilePass(unittest.TestCase):
         output = lib.run(cmd)
         self.validate(output)
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_20(self):
         self.test = os.path.join(lib.get_test_data(),
                                  "test_profile_firefox_20")
         self.run_firefox_with_password()
 
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
     def test_firefox_46(self):
         self.test = os.path.join(lib.get_test_data(),
                                  "test_profile_firefox_46")
+        self.run_firefox_with_password()
+
+    def test_firefox_59(self):
+        self.test = os.path.join(lib.get_test_data(),
+                                 "test_profile_firefox_59")
         self.run_firefox_with_password()
 
     def test_firefox_non_ascii(self):
@@ -48,9 +57,16 @@ class TestDirectProfilePass(unittest.TestCase):
                                  "test_profile_firefox_LЮшр/")
         self.run_firefox_with_password()
 
-    def test_firefox_nopass(self):
+    @unittest.skipIf(lib.platform == "Windows",
+                     "Windows DLL isn't backwards compatible")
+    def test_firefox_nopass_46(self):
         self.test = os.path.join(lib.get_test_data(),
-                                 "test_profile_firefox_nopassword")
+                                 "test_profile_firefox_nopassword_46")
+        self.run_firefox_nopassword()
+
+    def test_firefox_nopass_59(self):
+        self.test = os.path.join(lib.get_test_data(),
+                                 "test_profile_firefox_nopassword_59")
         self.run_firefox_nopassword()
 
 
