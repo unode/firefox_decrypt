@@ -24,6 +24,7 @@ jobs:
       - name: Run tests
         run: |
           cd tests
+          python show_encodings
           python run_all -v
 
   test-87-firefox:
@@ -48,4 +49,5 @@ jobs:
       - name: Run tests
         run: |
           cd tests
+          python show_encodings
           python run_all -v
