@@ -169,12 +169,16 @@ If you mix architectures the code will fail. More information on issue [#8](http
 
 `cmd.exe` is not supported due to it's poor UTF-8 support.
 Use [Microsoft Terminal](https://github.com/microsoft/terminal) and install [UTF-8 compatible fonts](https://www.google.com/get/noto/).
+Depending on the Terminal settings, the Windows version and the language of your system,
+you may also need to force Python to run in `UTF-8` mode with `PYTHONUTF8=1 python firefox_decrypt.py`.
+
 
 ##### MacOS/Darwin
 
 If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3`, consider installing `nss` using `brew` or an alternative package manager.
 
 While not supported, you may find that `DYLD_LIBRARY_PATH=. python3 firefox_decrypt.py` will work in some configurations.
+
 
 #### Testing
 
@@ -188,6 +192,7 @@ If tests continue to fail, re-run with `./run_all -v` then please file a bug rep
 - information about your system (e.g. Linux distribution, version of libnss/firefox …). 
 
 It is much appreciated.
+
 
 ### Spin-off, derived and related works
 
