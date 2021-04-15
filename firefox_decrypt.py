@@ -553,12 +553,17 @@ class MozillaInteraction:
         for url, user, passw, enctype in credentials:
             # enctype informs if passwords need to be decrypted
             if enctype:
-                LOG.debug("Decrypting username data '%s'", user)
-                user = self.proxy.decrypt(user)
-                LOG.debug("Decrypting password data '%s'", passw)
-                passw = self.proxy.decrypt(passw)
+                try:
+                    LOG.debug("Decrypting username data '%s'", user)
+                    user = self.proxy.decrypt(user)
+                    LOG.debug("Decrypting password data '%s'", passw)
+                    passw = self.proxy.decrypt(passw)
+                except (TypeError, ValueError) as e:
+                    LOG.warning("Failed to decode username or password for entry from URL %s", url)
+                    LOG.exception(e)
+                    continue
 
-            LOG.debug("Decoding username '%s' and password '%s' for website '%s'", user, passw, url)
+            LOG.debug("Decoded username '%s' and password '%s' for website '%s'", user, passw, url)
 
             output = {"url": url, "user": user, "password": passw}
             outputs.append(output)
