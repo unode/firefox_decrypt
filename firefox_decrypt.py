@@ -73,7 +73,7 @@ def get_version() -> str:
         return p.stdout.strip()
 
 
-__version_info__ = (1, 0, 0, "-rc1+git")
+__version_info__ = (1, 0, 0)
 __version__: str = get_version()
 
 

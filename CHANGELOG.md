@@ -1,7 +1,14 @@
 #### Changelog
 
-##### 1.0.0-rc1+git
-- 
+##### 1.0.0+git
+-
+
+##### 1.0.0
+- Improve detection of NSS in Windows and MacOS
+- Skip decoding failures or malformed records
+- UTF-8 is now required for all interaction
+- Python UTF-8 mode is recommended on Windows
+- Tests are now automated on Linux, MacOS and Windows
 
 ##### 1.0.0-rc1
 - Output formats have been internally refactored for easier extensibility.
