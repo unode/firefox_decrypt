@@ -11,14 +11,8 @@ import time
 import platform
 from multiprocessing import cpu_count
 from threading import Thread
-from subprocess import run, PIPE, CalledProcessError
-
-try:
-    # python 2
-    from Queue import Queue, Empty
-except ImportError:
-    # python 3
-    from queue import Queue, Empty
+from subprocess import run
+from queue import Queue, Empty
 
 TIMEOUT = .2
 
@@ -31,9 +25,11 @@ else:
 def comment(text):
     newtext = []
     for line in text.split("\n"):
-        if line.strip():
+        if line.strip():  # skip blank or space-only lines
             if line.startswith("ok") or line.startswith("not ok"):
                 line = "# (original state) " + line
+            elif not line.startswith("# "):
+                line = "# " + line
 
             newtext.append(line)
 
@@ -63,7 +59,11 @@ def run_test(testqueue, outqueue, threadname):
             err = ""
         else:
             if p.returncode:
-                log.info("Test %s exitcode was %s. Tests shouldn't use exit code. They are expected to exit cleanly and output 'ok' or 'not ok'", test, p.returncode)
+                log.info(
+                    "Test %s exitcode was %s. Tests shouldn't use exit code. "
+                    "They are expected to exit cleanly and output 'ok' or 'not ok'",
+                    test, p.returncode
+                )
                 failed = True
                 reason = "Exit code was {0}".format(p.returncode)
             out = p.stdout
