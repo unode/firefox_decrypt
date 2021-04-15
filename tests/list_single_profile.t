@@ -18,6 +18,9 @@ class TestSingleProfile(unittest.TestCase):
             lib.remove_log_date_time(
                 lib.run_error(cmd, returncode=expected_exitcode)))
 
+        if lib.platform == "Windows":
+            # Paths in Windows cause failures with string comparison
+            output = output.replace("\\", "/")
         self.assertEqual(output, expected)
 
     @unittest.skipIf(lib.platform == "Windows",
