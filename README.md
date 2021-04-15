@@ -2,7 +2,7 @@
 
 ![GitHub Actions status](https://github.com/unode/firefox_decrypt/actions/workflows/main.yml/badge.svg)
 
-As of 1.0.0-rc1 Python 3.9+ is required. Python 2 is no longer supported.
+As of 1.0.0 Python 3.9+ is required. Python 2 is no longer supported.
 If you encounter a problem, try the latest [release](https://github.com/unode/firefox_decrypt/releases) or check open issues for ongoing work.
 
 If you definitely need to use Python 2, [Firefox Decrypt 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0) is your best bet, although no longer supported.
