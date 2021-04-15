@@ -31,6 +31,7 @@ import sys
 import shutil
 from base64 import b64decode
 from getpass import getpass
+from itertools import chain
 from subprocess import run, PIPE, DEVNULL
 from urllib.parse import urlparse
 from configparser import ConfigParser
@@ -40,7 +41,7 @@ LOG: logging.Logger
 VERBOSE = False
 SYSTEM = platform.system()
 SYS64 = sys.maxsize > 2**32
-DEFAULT_ENCODING = "UTF-8"
+DEFAULT_ENCODING = "utf-8"
 
 PWStore = list[dict[str, str]]
 
@@ -1060,12 +1061,22 @@ def main() -> None:
 
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
-    LOG.debug(
-        "Running with encodings: stdin: %s, stdout: %s, locale: %s",
-        sys.stdin.encoding,
-        sys.stdout.encoding,
-        identify_system_locale(),
+    encodings = (
+        ("stdin", sys.stdin.encoding),
+        ("stdout", sys.stdout.encoding),
+        ("stderr", sys.stderr.encoding),
+        ("locale", identify_system_locale()),
     )
+
+    LOG.debug(
+        "Running with encodings: %s: %s, %s: %s, %s: %s, %s: %s",
+        *chain(*encodings)
+    )
+
+    for stream, encoding in encodings:
+        if encoding.lower() != DEFAULT_ENCODING:
+            LOG.warning("Running with unsupported encoding '%s': %s"
+                        " - Things are likely to fail from here onwards", stream, encoding)
 
     # Load Mozilla profile and initialize NSS before asking the user for input
     moz = MozillaInteraction()
