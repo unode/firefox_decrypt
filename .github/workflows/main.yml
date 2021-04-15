@@ -2,40 +2,15 @@ name: Test firefox_decrypt
 on: [push]
 
 jobs:
-  test-latest-firefox:
-    runs-on: ${{ matrix.os }}-latest
-    strategy:
-      matrix:
-        os: [ubuntu, macos]
-        # pypy3 not yet up to speed with py3.9 typing hints
-        # python-version: [3.9, 3.10.0-alpha.6, pypy3]
-        python-version: ['3.9', '3.10.0-alpha.6']
-        firefox: ['latest-esr', 'latest']
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Setup firefox ${{ matrix.firefox }}
-        uses: browser-actions/setup-firefox@latest
-        with:
-          firefox-version: ${{ matrix.firefox }}
-      - name: Run tests
-        run: |
-          cd tests
-          python show_encodings
-          python run_all -v
-
-  test-87-firefox:
+  test-firefox:
     runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
         os: [ubuntu, macos, windows]
         # pypy3 not yet up to speed with py3.9 typing hints
-        # python-version: [ 3.9, 3.10.0-alpha.6, pypy3 ]
+        # python-version: [3.9, 3.10.0-alpha.6, pypy3]
         python-version: ['3.9', '3.10.0-alpha.6']
-        firefox: ['87.0']
+        firefox: ['87.0', 'latest-esr', 'latest']
     env:
       # Needed to force UTF-8 and have consistent behavior in Windows
       PYTHONUTF8: 1
@@ -46,9 +21,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Setup firefox ${{ matrix.firefox }}
+        if: |
+          matrix.os == 'ubuntu' ||
+          (matrix.os == 'windows' && matrix.firefox == '87.0')
         uses: browser-actions/setup-firefox@latest
         with:
           firefox-version: ${{ matrix.firefox }}
+      - name: Install nss by homebrew
+        if: ${{ matrix.os == 'macos' }}
+        run: brew install nss
       - name: Run tests
         run: |
           cd tests
