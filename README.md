@@ -7,6 +7,21 @@ If you encounter a problem, try the latest [release](https://github.com/unode/fi
 
 If you definitely need to use Python 2, [Firefox Decrypt 0.7.0](https://github.com/unode/firefox_decrypt/releases/tag/0.7.0) is your best bet, although no longer supported.
 
+### Table of contents 
+
+* [About](#about)
+* [Usage](#usage)
+    * [Advanced Usage](#advanced-usage)
+    * [Non-Interactive mode](#non-interactive-mode)
+* Ouput formats
+    * [CSV/Tabular](#format-csv)
+    * [Pass - Password Store](#format-pass---passwordstore)
+* [Troubleshooting](#troubleshooting)
+    * [Windows](#windows)
+    * [MacOSX](#macosdarwin)
+* [Testing](#testing)
+* [Derived works](#spin-off-derived-and-related-works)
+
 #### About
 
 **Firefox Decrypt** is a tool to extract passwords from profiles of Mozilla (Fire/Water)fox™, Thunderbird®, SeaMonkey® and derivates.
@@ -69,38 +84,7 @@ You can also choose from one of the supported formats with `--format`:
 
 (*) `pass` can produce unintended consequences. Make sure to backup your password store before using this.
 
-##### Format CSV
-
-Passwords may be exported in CSV format using the `--format` flag.
-
-```
-python firefox_decrypt.py --format csv
-```
-
-Additionally, `--csv-delimiter` and `--csv-quotechar` flags can specify which characters to use as delimiters and quote characters in the CSV output.
-
-##### Format Pass - Passwordstore
-
-Stored passwords can be exported to [`pass`](http://passwordstore.org) (from passwordstore.org) using:
-
-```
-python firefox_decrypt.py --format pass
-```
-
-**All** existing passwords will be exported after the pattern `web/<address>[:<port>]`.
-If multiple credentials exist for the same website `/<login>` is appended.
-By `pass` convention, the password will be on the first and the username on the second line.
-
-To prefix the username with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension, you can use:
-```
-python firefox_decrypt.py --format pass --pass-username-prefix 'login: '
-```
-
-There is currently no way to selectively export passwords.
-
-Exporting will overwrite existing passwords without warning. Ensure you have a backup or are using the `pass git` functionality.
-
-#### Non-interactive mode
+##### Non-interactive mode
 
 A non-interactive mode which bypasses all prompts, including profile choice and master password, can be enabled with `-n/--no-interactive`.
 If you have multiple Mozilla profiles, make sure to also indicate your profile choice by passing `-c/--choice N` where N is the number of the profile you wish to decrypt (starting from **1**).
@@ -147,6 +131,37 @@ Your master password is read from stdin.
 
     $ # Unset Password
     $ PASSWORD=
+
+##### Format CSV
+
+Passwords may be exported in CSV format using the `--format` flag.
+
+```
+python firefox_decrypt.py --format csv
+```
+
+Additionally, `--csv-delimiter` and `--csv-quotechar` flags can specify which characters to use as delimiters and quote characters in the CSV output.
+
+##### Format Pass - Passwordstore
+
+Stored passwords can be exported to [`pass`](http://passwordstore.org) (from passwordstore.org) using:
+
+```
+python firefox_decrypt.py --format pass
+```
+
+**All** existing passwords will be exported after the pattern `web/<address>[:<port>]`.
+If multiple credentials exist for the same website `/<login>` is appended.
+By `pass` convention, the password will be on the first and the username on the second line.
+
+To prefix the username with `login: ` for compatibility with the [browserpass](https://github.com/dannyvankooten/browserpass) extension, you can use:
+```
+python firefox_decrypt.py --format pass --pass-username-prefix 'login: '
+```
+
+There is currently no way to selectively export passwords.
+
+Exporting will overwrite existing passwords without warning. Ensure you have a backup or are using the `pass git` functionality.
 
 #### Troubleshooting
 
