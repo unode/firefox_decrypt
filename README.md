@@ -175,7 +175,7 @@ you may also need to force Python to run in `UTF-8` mode with `PYTHONUTF8=1 pyth
 
 ##### MacOS/Darwin
 
-If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3`, consider installing `nss` using `brew` or an alternative package manager.
+If you get the error described in [#14](https://github.com/unode/firefox_decrypt/issues/14) when loading `libnss3`, consider installing `nss` using [Homebrew](https://brew.sh/) or an alternative package manager.
 
 While not supported, you may find that `DYLD_LIBRARY_PATH=. python3 firefox_decrypt.py` will work in some configurations.
 
