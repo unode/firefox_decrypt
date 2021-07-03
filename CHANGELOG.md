@@ -1,7 +1,7 @@
 #### Changelog
 
 ##### 1.0.0+git
--
+- Allow overriding default encoding
 
 ##### 1.0.0
 - Improve detection of NSS in Windows and MacOS

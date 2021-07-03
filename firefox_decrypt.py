@@ -1000,6 +1000,11 @@ def parse_sys_args() -> argparse.Namespace:
         action="store_true",
         help="List profiles and exit.")
     parser.add_argument(
+        "-e", "--encoding",
+        action="store",
+        default=DEFAULT_ENCODING,
+        help="Override default encoding (%(default)s).")
+    parser.add_argument(
         "-v", "--verbose",
         action="count",
         default=0,
@@ -1058,6 +1063,15 @@ def main() -> None:
     args = parse_sys_args()
 
     setup_logging(args)
+
+    global DEFAULT_ENCODING
+
+    if args.encoding != DEFAULT_ENCODING:
+        LOG.info("Overriding default encoding from '%s' to '%s'",
+                 DEFAULT_ENCODING, args.encoding)
+
+        # Override default encoding if specified by user
+        DEFAULT_ENCODING = args.encoding
 
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
