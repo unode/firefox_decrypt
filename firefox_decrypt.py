@@ -839,7 +839,7 @@ def read_profiles(basepath):
 
     # Read profiles from Firefox profile folder
     profiles = ConfigParser()
-    profiles.read(profileini)
+    profiles.read(profileini, encoding=DEFAULT_ENCODING)
 
     LOG.debug("Read profiles %s", profiles.sections())
 
