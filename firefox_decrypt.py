@@ -42,6 +42,7 @@ VERBOSE = False
 SYSTEM = platform.system()
 SYS64 = sys.maxsize > 2**32
 DEFAULT_ENCODING = "utf-8"
+OVERRIDE_ENCODING = DEFAULT_ENCODING
 
 PWStore = list[dict[str, str]]
 
@@ -839,7 +840,7 @@ def read_profiles(basepath):
 
     # Read profiles from Firefox profile folder
     profiles = ConfigParser()
-    profiles.read(profileini, encoding=DEFAULT_ENCODING)
+    profiles.read(profileini, encoding=OVERRIDE_ENCODING)
 
     LOG.debug("Read profiles %s", profiles.sections())
 
@@ -1064,14 +1065,14 @@ def main() -> None:
 
     setup_logging(args)
 
-    global DEFAULT_ENCODING
+    global OVERRIDE_ENCODING
 
     if args.encoding != DEFAULT_ENCODING:
         LOG.info("Overriding default encoding from '%s' to '%s'",
-                 DEFAULT_ENCODING, args.encoding)
+                 OVERRIDE_ENCODING, args.encoding)
 
         # Override default encoding if specified by user
-        DEFAULT_ENCODING = args.encoding
+        OVERRIDE_ENCODING = args.encoding
 
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
