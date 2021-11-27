@@ -35,7 +35,7 @@ from itertools import chain
 from subprocess import run, PIPE, DEVNULL
 from urllib.parse import urlparse
 from configparser import ConfigParser
-from typing import Optional, Iterator, Any
+from typing import Optional, Iterator, Any, Dict, List
 
 LOG: logging.Logger
 VERBOSE = False
@@ -43,7 +43,7 @@ SYSTEM = platform.system()
 SYS64 = sys.maxsize > 2**32
 DEFAULT_ENCODING = "utf-8"
 
-PWStore = list[dict[str, str]]
+PWStore = List[Dict[str, str]]
 
 # NOTE: In 1.0.0-rc1 we tried to use locale information to encode/decode
 # content passed to NSS. This was an attempt to address the encoding issues
