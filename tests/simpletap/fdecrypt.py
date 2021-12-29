@@ -13,6 +13,21 @@ class Test:
     def __init__(self):
         self.testdir = os.path.realpath(os.path.dirname(os.path.dirname(__file__)))
         self.platform = platform.system()
+        self.interpreter = "python3"
+
+        self.check_interpreter()
+
+    def check_interpreter(self):
+        out = run([self.interpreter, "--version"], capture_output=True)
+
+        try:
+            major, minor, _ = out.stdout.decode("utf-8").strip().split(" ")[1].split(".")
+            valid_version = (int(major) == 3) & (int(minor) >= 9)
+        except (ValueError, IndexError, TypeError):
+            raise Exception("Couldn't parse version of 'python3 --version'")
+
+        if not valid_version:
+            raise Exception(f"{self.interpreter} binary has version {major}.{minor} but at least 3.9 is required")
 
     def run(self, cmd, stdin=None, stderr=STDOUT, workdir=None):
         if stderr == sys.stderr:
@@ -51,7 +66,7 @@ class Test:
             return fh.read()
 
     def get_script(self):
-        return ["python3", "{}/../firefox_decrypt.py".format(self.testdir)]
+        return [self.interpreter, "{}/../firefox_decrypt.py".format(self.testdir)]
 
     def get_test_data(self):
         return os.path.join(self.testdir, "test_data")
