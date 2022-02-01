@@ -669,7 +669,7 @@ class PassOutputFormat(OutputFormat):
         LOG.debug("Testing if password store is installed and configured")
 
         try:
-            p = run([self.cmd], capture_output=True, text=True)
+            p = run([self.cmd, "ls"], capture_output=True, text=True)
         except FileNotFoundError as e:
             if e.errno == 2:
                 LOG.error("Password store is not installed and exporting was requested")
@@ -735,7 +735,7 @@ class PassOutputFormat(OutputFormat):
                 else:
                     passname = f"{prefix}{address}"
 
-                LOG.debug("Exporting credentials for '%s'", passname)
+                LOG.info("Exporting credentials for '%s'", passname)
 
                 data = f"{passw}\n{self.username_prefix}{user}\n"
 
