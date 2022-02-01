@@ -656,6 +656,7 @@ class PassOutputFormat(OutputFormat):
         self.prefix = cmdargs.pass_prefix
         self.cmd = cmdargs.pass_cmd
         self.username_prefix = cmdargs.pass_username_prefix
+        self.always_with_login = cmdargs.pass_always_with_login
 
     def output(self):
         self.test_pass_cmd()
@@ -730,7 +731,7 @@ class PassOutputFormat(OutputFormat):
             for user, passw in self.to_export[address].items():
                 # When more than one account exist for the same address, add
                 # the login to the password identifier
-                if len(self.to_export[address]) > 1:
+                if self.always_with_login or len(self.to_export[address]) > 1:
                     passname = f"{prefix}{address}/{user}"
                 else:
                     passname = f"{prefix}{address}"
@@ -987,6 +988,10 @@ def parse_sys_args() -> argparse.Namespace:
         action="store",
         default="pass",
         help="Command/path to use when exporting to pass (default: %(default)s)")
+    parser.add_argument(
+        "--pass-always-with-login",
+        action="store_true",
+        help="Always save as /<login> (default: only when multiple accounts per domain)")
     parser.add_argument(
         "-n", "--no-interactive",
         action="store_false", dest="interactive",
