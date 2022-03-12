@@ -16,7 +16,6 @@
 
 # Based on original work from: www.dumpzilla.org
 
-from __future__ import annotations
 
 import argparse
 import csv
@@ -44,6 +43,8 @@ SYS64 = sys.maxsize > 2**32
 DEFAULT_ENCODING = "utf-8"
 
 PWStore = list[dict[str, str]]
+
+
 
 # NOTE: In 1.0.0-rc1 we tried to use locale information to encode/decode
 # content passed to NSS. This was an attempt to address the encoding issues
@@ -437,11 +438,15 @@ class NSSProxy:
                 Exit.FAIL_SHUTDOWN_NSS,
                 "Couldn't shutdown current NSS profile",
             )
-
-    def authenticate(self, profile, interactive):
+            
+        
+    
+    def authenticate(self, profile, interactive, brutemode):
         """Unlocks the profile if necessary, in which case a password
         will prompted to the user.
         """
+        
+        
         LOG.debug("Retrieving internal key slot")
         keyslot = self._PK11_GetInternalKeySlot()
 
@@ -451,27 +456,38 @@ class NSSProxy:
                 Exit.FAIL_NSS_KEYSLOT,
                 "Failed to retrieve internal KeySlot",
             )
-
+        
         try:
             if self._PK11_NeedLogin(keyslot):
-                password: str = ask_password(profile, interactive)
-
-                LOG.debug("Authenticating with password '%s'", password)
-                err_status: int = self._PK11_CheckUserPassword(keyslot, password)
-
-                LOG.debug("Checking user password returned %s", err_status)
-
-                if err_status:
-                    self.handle_error(
-                        Exit.BAD_MASTER_PASSWORD,
-                        "Master password is not correct",
-                    )
+                if(brutemode == 0):
+                    password: str = ask_password(profile, interactive)
+                    LOG.debug("Authenticating with password '%s'", password)
+                    err_status: int = self._PK11_CheckUserPassword(keyslot, password)
+                    LOG.debug("Checking user password returned %s", err_status)
+                    if err_status:
+                        print("Wrong password, starting bruteforce")
+                if(brutemode == 1):
+                    for line in lines:
+                        err_status: int = self._PK11_CheckUserPassword(keyslot, line.strip())
+                        print("Trying %s" % (line))
+                        LOG.debug("Checking user password returned %s", err_status)
+                        if err_status:
+                            print("Master password is not correct")
+                        else:
+                            print("Password found: %s" % (line))
+                            return
+                    
+                    
+                    
 
             else:
                 LOG.info("No Master Password found - no authentication needed")
         finally:
             # Avoid leaking PK11KeySlot
             self._PK11_FreeSlot(keyslot)
+
+    
+
 
     def handle_error(self, exitcode: int, *logerror: Any):
         """If an error happens in libnss, handle it and print some debug information
@@ -527,11 +543,11 @@ class MozillaInteraction:
         self.profile = profile
         self.proxy.initialize(self.profile)
 
-    def authenticate(self, interactive):
+    def authenticate(self, interactive, brutemode):
         """Authenticate the the current profile is protected by a master password,
         prompt the user and unlock the profile.
         """
-        self.proxy.authenticate(self.profile, interactive)
+        self.proxy.authenticate(self.profile, interactive, brutemode)
 
     def unload_profile(self):
         """Shutdown NSS and deactivate current profile
@@ -1015,6 +1031,11 @@ def parse_sys_args() -> argparse.Namespace:
         default=0,
         help="Verbosity level. Warning on -vv (highest level) user input will be printed on screen")
     parser.add_argument(
+        "-w", "--wordlist",
+        action="store",
+        default=0,
+        help="Path to wordlist for bruteforcing")
+    parser.add_argument(
         "--version",
         action="version", version=__version__,
         help="Display version of firefox_decrypt and exit")
@@ -1026,6 +1047,12 @@ def parse_sys_args() -> argparse.Namespace:
         args.csv_delimiter = "\t"
 
     return args
+
+def setup_bruteforce(args) -> None:
+    if args.wordlist:
+        global lines
+        with open(args.wordlist, 'r', encoding="ISO-8859-1") as wl:
+            lines = wl.readlines()
 
 
 def setup_logging(args) -> None:
@@ -1068,7 +1095,7 @@ def main() -> None:
     args = parse_sys_args()
 
     setup_logging(args)
-
+    setup_bruteforce(args)
     global DEFAULT_ENCODING
 
     if args.encoding != DEFAULT_ENCODING:
@@ -1108,7 +1135,10 @@ def main() -> None:
     # Start NSS for selected profile
     moz.load_profile(profile)
     # Check if profile is password protected and prompt for a password
-    moz.authenticate(args.interactive)
+    if(args.wordlist):
+        moz.authenticate(args.interactive,1)
+    else:
+        moz.authenticate(args.interactive,0)
     # Decode all passwords
     outputs = moz.decrypt_passwords()
 
