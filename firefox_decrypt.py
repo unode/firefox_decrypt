@@ -262,11 +262,13 @@ def load_libnss():
         locations: list[str] = [
             "",  # Current directory or system lib finder
             os.path.expanduser("~\\AppData\\Local\\Mozilla Firefox"),
+            os.path.expanduser("~\\AppData\\Local\\Firefox Developer Edition"),
             os.path.expanduser("~\\AppData\\Local\\Mozilla Thunderbird"),
             os.path.expanduser("~\\AppData\\Local\\Nightly"),
             os.path.expanduser("~\\AppData\\Local\\SeaMonkey"),
             os.path.expanduser("~\\AppData\\Local\\Waterfox"),
             "C:\\Program Files\\Mozilla Firefox",
+            "C:\\Program Files\\Firefox Developer Edition",
             "C:\\Program Files\\Mozilla Thunderbird",
             "C:\\Program Files\\Nightly",
             "C:\\Program Files\\SeaMonkey",
@@ -276,6 +278,7 @@ def load_libnss():
             locations = [
                 "",  # Current directory or system lib finder
                 "C:\\Program Files (x86)\\Mozilla Firefox",
+                "C:\\Program Files (x86)\\Firefox Developer Edition",
                 "C:\\Program Files (x86)\\Mozilla Thunderbird",
                 "C:\\Program Files (x86)\\Nightly",
                 "C:\\Program Files (x86)\\SeaMonkey",
