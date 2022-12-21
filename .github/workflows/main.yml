@@ -15,9 +15,9 @@ jobs:
       # Needed to force UTF-8 and have consistent behavior in Windows
       PYTHONUTF8: 1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@master
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@master
         with:
           python-version: ${{ matrix.python-version }}
       - name: Setup firefox ${{ matrix.firefox }}
