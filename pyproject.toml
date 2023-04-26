@@ -1,16 +1,14 @@
-[tool.poetry]
+[project]
 name = "firefox-decrypt"
 version = "1.0.0"
 description = "Firefox Decrypt is a tool to extract passwords from Mozilla (Firefox™, Waterfox™, Thunderbird®, SeaMonkey®) profiles"
-authors = ["Renato Alves"]
+authors = [{name = "Renato Alves"}]
+requires-python = ">=3.9"
 license = "GPL-3.0-only"
 readme = "README.md"
 
-[tool.poetry.scripts]
+[project.scripts]
 firefox_decrypt = "firefox_decrypt:run"
-
-[tool.poetry.dependencies]
-python = "^3.9"
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
