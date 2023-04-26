@@ -1110,6 +1110,7 @@ def main() -> None:
     # Finally shutdown NSS
     moz.unload_profile()
 
+
 def run():
     try:
         main()
@@ -1118,6 +1119,7 @@ def run():
         sys.exit(Exit.KEYBOARD_INTERRUPT)
     except Exit as e:
         sys.exit(e.exitcode)
+
 
 if __name__ == "__main__":
     run()
