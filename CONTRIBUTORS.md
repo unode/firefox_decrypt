@@ -17,6 +17,7 @@
     <tr>
       <td align="center" valign="top" width="14.28%"><a href="https://catball.dev/"><img src="https://avatars.githubusercontent.com/u/43632885?v=4?s=100" width="100px;" alt="Cat Lee Ball"/><br /><sub><b>Cat Lee Ball</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=catleeball" title="Documentation">📖</a></td>
       <td align="center" valign="top" width="14.28%"><a href="http://www.levisflorian.name/"><img src="https://avatars.githubusercontent.com/u/236413?v=4?s=100" width="100px;" alt="Florian Levis"/><br /><sub><b>Florian Levis</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=Gounlaf" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/thomasmerz"><img src="https://avatars.githubusercontent.com/u/18568381?v=4?s=100" width="100px;" alt="thomasmerz"/><br /><sub><b>thomasmerz</b></sub></a><br /><a href="#infra-thomasmerz" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
     </tr>
   </tbody>
   <tfoot>
