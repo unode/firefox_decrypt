@@ -21,6 +21,7 @@
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/stweil"><img src="https://avatars.githubusercontent.com/u/6734573?v=4?s=100" width="100px;" alt="Stefan Weil"/><br /><sub><b>Stefan Weil</b></sub></a><br /><a href="#a11y-stweil" title="Accessibility">️️️️♿️</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://dev.page/tennox"><img src="https://avatars.githubusercontent.com/u/2084639?v=4?s=100" width="100px;" alt="Manuel"/><br /><sub><b>Manuel</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=tennox" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/Anthropohedron"><img src="https://avatars.githubusercontent.com/u/107431?v=4?s=100" width="100px;" alt="Anthropohedron"/><br /><sub><b>Anthropohedron</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=Anthropohedron" title="Code">💻</a> <a href="#platform-Anthropohedron" title="Packaging/porting to new platform">📦</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="http://alejandroamo.eu/"><img src="https://avatars.githubusercontent.com/u/1114811?v=4?s=100" width="100px;" alt="Alejandro Amo"/><br /><sub><b>Alejandro Amo</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=alejandro-amo" title="Code">💻</a> <a href="#platform-alejandro-amo" title="Packaging/porting to new platform">📦</a></td>
     </tr>
   </tbody>
   <tfoot>

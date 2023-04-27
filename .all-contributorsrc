@@ -160,6 +160,16 @@
         "code",
         "platform"
       ]
+    },
+    {
+      "login": "alejandro-amo",
+      "name": "Alejandro Amo",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1114811?v=4",
+      "profile": "http://alejandroamo.eu/",
+      "contributions": [
+        "code",
+        "platform"
+      ]
     }
   ],
   "contributorsPerLine": 7,
