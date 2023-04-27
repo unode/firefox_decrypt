@@ -105,6 +105,15 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "catleeball",
+      "name": "Cat Lee Ball",
+      "avatar_url": "https://avatars.githubusercontent.com/u/43632885?v=4",
+      "profile": "https://catball.dev/",
+      "contributions": [
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
