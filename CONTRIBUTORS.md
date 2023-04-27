@@ -1,4 +1,4 @@
-## Contributors
+# Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
@@ -42,10 +42,12 @@
 <!-- prettier-ignore-end -->
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
 
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
+## Third-party credit
 
-<!-- ALL-CONTRIBUTORS-LIST:END -->
+As third party developers often go uncredited, we'd also like to extend our
+thanks to:
+
+    Wilhelm Schuermann  (@wbsch)            - bash_tap
+    Paul Beckingham     (@taskwarrior)      - test scripts
+    Hubert Kario                            - pointed out the solution for v59 profile changes
