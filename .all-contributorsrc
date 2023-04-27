@@ -66,6 +66,16 @@
         "test",
         "userTesting"
       ]
+    },
+    {
+      "login": "sedrubal",
+      "name": "sedrubal",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5571650?v=4",
+      "profile": "https://sedrubal.de/",
+      "contributions": [
+        "code",
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,
