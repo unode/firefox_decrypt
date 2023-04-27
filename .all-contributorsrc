@@ -1,0 +1,20 @@
+{
+    "projectName": "firefox_decrypt",
+    "projectOwner": "unode",
+    "files": ["CONTRIBUTORS.md"],
+    "commitConvention": "gitmoji",
+    "contributorsSortAlphabetically": true,
+    "contributors": [
+        "AlisterAmo",
+        "Anthropohedron",
+        "Gounlaf",
+        "NeffIsBack",
+        "criztovyl",
+        "eseifert",
+        "jneves",
+        "sedrubal",
+        "tennox",
+        "unode",
+        "yermulnik"
+    ]
+}

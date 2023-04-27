@@ -1,6 +1,8 @@
 ### Firefox Decrypt
 
 ![GitHub Actions status](https://github.com/unode/firefox_decrypt/actions/workflows/main.yml/badge.svg)
+[![Gitmoji badge](https://img.shields.io/badge/gitmoji-%20😜%20😍-FFDD67.svg?style=flat-square)](https://gitmoji.dev)
+[![All Contributors](https://img.shields.io/github/all-contributors/unode/firefox_decrypt?color=ee8449&style=flat-square)](#contributors)
 
 As of 1.0.0 Python 3.9+ is required. Python 2 is no longer supported.
 If you encounter a problem, try the latest [release](https://github.com/unode/firefox_decrypt/releases) or check open issues for ongoing work.
@@ -208,6 +210,9 @@ If tests continue to fail, re-run with `./run_all -v` then please file a bug rep
 
 It is much appreciated.
 
+### Contributors
+
+See [CONTRIBUTORS.md](CONTRIBUTORS.md) for a complete list of contributions
 
 ### Spin-off, derived and related works
 
