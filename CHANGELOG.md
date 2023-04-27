@@ -1,6 +1,7 @@
 #### Changelog
 
 ##### 1.0.0+git
+- Include `pyproject.toml` to facilitate usage via `pipx`
 - Allow overriding default encoding
 - Add `--pass-always-with-login` to always include /login as part of pass's password path
 - Improve compatibility with `gopass` by explicitly using `pass ls` instead of `pass`
