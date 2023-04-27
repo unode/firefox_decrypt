@@ -19,6 +19,7 @@
       <td align="center" valign="top" width="14.28%"><a href="http://www.levisflorian.name/"><img src="https://avatars.githubusercontent.com/u/236413?v=4?s=100" width="100px;" alt="Florian Levis"/><br /><sub><b>Florian Levis</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=Gounlaf" title="Code">💻</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/thomasmerz"><img src="https://avatars.githubusercontent.com/u/18568381?v=4?s=100" width="100px;" alt="thomasmerz"/><br /><sub><b>thomasmerz</b></sub></a><br /><a href="#infra-thomasmerz" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
       <td align="center" valign="top" width="14.28%"><a href="https://github.com/stweil"><img src="https://avatars.githubusercontent.com/u/6734573?v=4?s=100" width="100px;" alt="Stefan Weil"/><br /><sub><b>Stefan Weil</b></sub></a><br /><a href="#a11y-stweil" title="Accessibility">️️️️♿️</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://dev.page/tennox"><img src="https://avatars.githubusercontent.com/u/2084639?v=4?s=100" width="100px;" alt="Manuel"/><br /><sub><b>Manuel</b></sub></a><br /><a href="https://github.com/unode/firefox_decrypt/commits?author=tennox" title="Code">💻</a></td>
     </tr>
   </tbody>
   <tfoot>
