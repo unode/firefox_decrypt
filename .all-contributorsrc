@@ -150,6 +150,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "Anthropohedron",
+      "name": "Anthropohedron",
+      "avatar_url": "https://avatars.githubusercontent.com/u/107431?v=4",
+      "profile": "https://github.com/Anthropohedron",
+      "contributions": [
+        "code",
+        "platform"
+      ]
     }
   ],
   "contributorsPerLine": 7,
