@@ -51,6 +51,21 @@
       "contributions": [
         "platform"
       ]
+    },
+    {
+      "login": "criztovyl",
+      "name": "Christoph Schulz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2174918?v=4",
+      "profile": "https://criztovyl.space/",
+      "contributions": [
+        "bug",
+        "code",
+        "doc",
+        "example",
+        "maintenance",
+        "test",
+        "userTesting"
+      ]
     }
   ],
   "contributorsPerLine": 7,
