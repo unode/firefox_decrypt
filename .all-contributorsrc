@@ -170,6 +170,16 @@
         "code",
         "platform"
       ]
+    },
+    {
+      "login": "yermulnik",
+      "name": "George L. Yermulnik",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1274789?v=4",
+      "profile": "https://github.com/yermulnik",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
