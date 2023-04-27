@@ -85,6 +85,16 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "edwintorok",
+      "name": "Török Edwin",
+      "avatar_url": "https://avatars.githubusercontent.com/u/721894?v=4",
+      "profile": "https://github.com/edwintorok",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
