@@ -1,20 +1,49 @@
 {
-    "projectName": "firefox_decrypt",
-    "projectOwner": "unode",
-    "files": ["CONTRIBUTORS.md"],
-    "commitConvention": "gitmoji",
-    "contributorsSortAlphabetically": true,
-    "contributors": [
-        "AlisterAmo",
-        "Anthropohedron",
-        "Gounlaf",
-        "NeffIsBack",
-        "criztovyl",
-        "eseifert",
-        "jneves",
-        "sedrubal",
-        "tennox",
-        "unode",
-        "yermulnik"
-    ]
+  "projectName": "firefox_decrypt",
+  "projectOwner": "unode",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "CONTRIBUTORS.md",
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": true,
+  "commitConvention": "gitmoji",
+  "contributors": [
+    {
+      "login": "unode",
+      "name": "Renato Alves",
+      "avatar_url": "https://avatars.githubusercontent.com/u/122319?v=4",
+      "profile": "https://gitlab.com/unode",
+      "contributions": [
+        "a11y",
+        "question",
+        "bug",
+        "code",
+        "content",
+        "data",
+        "design",
+        "doc",
+        "example",
+        "ideas",
+        "infra",
+        "maintenance",
+        "mentoring",
+        "platform",
+        "plugin",
+        "projectManagement",
+        "promotion",
+        "research",
+        "review",
+        "security",
+        "test",
+        "tool",
+        "tutorial",
+        "userTesting"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "linkToUsage": true
 }
