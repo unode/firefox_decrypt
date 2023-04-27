@@ -1111,7 +1111,7 @@ def main() -> None:
     moz.unload_profile()
 
 
-if __name__ == "__main__":
+def run():
     try:
         main()
     except KeyboardInterrupt:
@@ -1119,3 +1119,7 @@ if __name__ == "__main__":
         sys.exit(Exit.KEYBOARD_INTERRUPT)
     except Exit as e:
         sys.exit(e.exitcode)
+
+
+if __name__ == "__main__":
+    run()

@@ -1,0 +1,15 @@
+[project]
+name = "firefox-decrypt"
+version = "1.0.0"
+description = "Firefox Decrypt is a tool to extract passwords from Mozilla (Firefox™, Waterfox™, Thunderbird®, SeaMonkey®) profiles"
+authors = [{name = "Renato Alves"}]
+requires-python = ">=3.9"
+license = {text = "GPL-3.0-only"}
+readme = "README.md"
+
+[project.scripts]
+firefox_decrypt = "firefox_decrypt:run"
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
