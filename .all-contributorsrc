@@ -95,6 +95,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "eseifert",
+      "name": "Erich Seifert",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3323691?v=4",
+      "profile": "https://github.com/eseifert",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
