@@ -8,7 +8,7 @@ license = {text = "GPL-3.0-only"}
 readme = "README.md"
 
 [project.scripts]
-firefox_decrypt = "firefox_decrypt:run"
+firefox_decrypt = "firefox_decrypt:run_ffdecrypt"
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]

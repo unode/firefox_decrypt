@@ -1111,7 +1111,7 @@ def main() -> None:
     moz.unload_profile()
 
 
-def run():
+def run_ffdecrypt():
     try:
         main()
     except KeyboardInterrupt:
@@ -1122,4 +1122,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    run_ffdecrypt()
