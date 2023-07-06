@@ -401,7 +401,10 @@ class NSSProxy:
         # Transparently handle decoding to string when returning a c_char_p
         if restype == ct.c_char_p:
             def _decode(result, func, *args):
-                return result.decode(DEFAULT_ENCODING)
+                try:
+                    return result.decode(DEFAULT_ENCODING)
+                except AttributeError:
+                    return result
             res.errcheck = _decode
 
         setattr(self, "_" + name, res)
