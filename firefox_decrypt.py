@@ -100,8 +100,8 @@ class Exit(Exception):
     FAIL_INIT_NSS = 12
     FAIL_NSS_KEYSLOT = 13
     FAIL_SHUTDOWN_NSS = 14
-    BAD_MASTER_PASSWORD = 15
-    NEED_MASTER_PASSWORD = 16
+    BAD_PRIMARY_PASSWORD = 15
+    NEED_PRIMARY_PASSWORD = 16
     DECRYPTION_FAILED = 17
 
     PASSSTORE_NOT_INIT = 20
@@ -455,12 +455,12 @@ class NSSProxy:
 
                 if err_status:
                     self.handle_error(
-                        Exit.BAD_MASTER_PASSWORD,
-                        "Master password is not correct",
+                        Exit.BAD_PRIMARY_PASSWORD,
+                        "Primary password is not correct",
                     )
 
             else:
-                LOG.info("No Master Password found - no authentication needed")
+                LOG.info("No Primary Password found - no authentication needed")
         finally:
             # Avoid leaking PK11KeySlot
             self._PK11_FreeSlot(keyslot)
@@ -521,7 +521,7 @@ class MozillaInteraction:
         self.proxy.initialize(self.profile)
 
     def authenticate(self, interactive):
-        """Authenticate the the current profile is protected by a master password,
+        """Authenticate the the current profile is protected by a primary password,
         prompt the user and unlock the profile.
         """
         self.proxy.authenticate(self.profile, interactive)
@@ -805,12 +805,12 @@ def ask_password(profile: str, interactive: bool) -> str:
     Prompt for profile password
     """
     passwd: str
-    passmsg = f"\nMaster Password for profile {profile}: "
+    passmsg = f"\nPrimary Password for profile {profile}: "
 
     if sys.stdin.isatty() and interactive:
         passwd = getpass(passmsg)
     else:
-        sys.stderr.write("Reading Master password from standard input:\n")
+        sys.stderr.write("Reading Primary password from standard input:\n")
         sys.stderr.flush()
         # Ability to read the password from stdin (echo "pass" | ./firefox_...)
         passwd = sys.stdin.readline().rstrip("\n")
