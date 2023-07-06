@@ -102,6 +102,7 @@ class Exit(Exception):
     FAIL_SHUTDOWN_NSS = 14
     BAD_MASTER_PASSWORD = 15
     NEED_MASTER_PASSWORD = 16
+    DECRYPTION_FAILED = 17
 
     PASSSTORE_NOT_INIT = 20
     PASSSTORE_MISSING = 21
@@ -492,8 +493,9 @@ class NSSProxy:
         try:
             if err_status:  # -1 means password failed, other status are unknown
                 self.handle_error(
-                    Exit.NEED_MASTER_PASSWORD,
-                    "Password decryption failed. Passwords protected by a Master Password!",
+                    Exit.DECRYPTION_FAILED,
+                    "Username/Password decryption failed. "
+                    "Credentials damaged or cert/key file mismatch.",
                 )
 
             res = out.decode_data()
