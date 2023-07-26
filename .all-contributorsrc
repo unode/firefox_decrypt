@@ -180,6 +180,15 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "rma-x",
+      "name": "rma-x",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4435732?v=4",
+      "profile": "https://github.com/rma-x",
+      "contributions": [
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
