@@ -83,7 +83,7 @@ You can also choose from one of the supported formats with `--format`:
 * `json` - a machine compatible format - see [JSON](https://en.wikipedia.org/wiki/JSON)
 * `pass` - a special output format that directly calls to the [passwordstore.org](https://www.passwordstore.org) command to export passwords (*). See also `--pass-*` options.
 
-(*) `pass` can produce unintended consequences. Make sure to backup your password store before using this.
+(*) `pass` can produce unintended consequences. Make sure to backup your password store before using this option.
 
 ##### Non-interactive mode
 
@@ -164,6 +164,19 @@ There is currently no way to selectively export passwords.
 
 Exporting will overwrite existing passwords without warning. Ensure you have a backup or are using the `pass git` functionality.
 
+##### Non fatal password decryption
+
+By default, encountering a corrupted username or password will abort decryption.
+Since version `1.1.0` there is now `--non-fatal-decryption` that tolerates individual failures.
+
+    $ python firefox_decrypt.py --non-fatal-decryption
+    (...)
+    Website:   https://github.com
+    Username: '*** decryption failed ***'
+    Password: '*** decryption failed ***'
+
+which can also be combined with any of the above `--format` options.
+
 #### Troubleshooting
 
 If a problem occurs, please try `firefox_decrypt` in high verbosity mode by calling it with:
@@ -176,6 +189,10 @@ If the output does not help you to identify the cause and a solution to the prob
 
 - your profile password, as well as other passwords, may be visible in the output – so **please remove any sensitive data** before sharing the output.
 
+##### Silencing error messages
+
+Logging messages above warning level are included in the standard error output by default as these can be useful to troubleshoot failures.
+If you wish to omit this information append ` 2>/dev/null` to your command on UNIX and ` 2> nul` on Windows.
 
 ##### Windows
 

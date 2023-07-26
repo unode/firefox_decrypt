@@ -5,6 +5,8 @@
 - Allow overriding default encoding
 - Add `--pass-always-with-login` to always include /login as part of pass's password path
 - Improve compatibility with `gopass` by explicitly using `pass ls` instead of `pass`
+- Add `--non-fatal-decryption` to attempt decrypting partially corrupt databases instead of aborting on first failure
+- Enable All Contributors framework in project
 
 ##### 1.0.0
 - Improve detection of NSS in Windows and MacOS
