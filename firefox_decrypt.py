@@ -583,7 +583,7 @@ class MozillaInteraction:
                         "Failed to decode username or password for entry from URL %s",
                         url,
                     )
-                    LOG.exception(e)
+                    LOG.debug(e, exc_info=True)
                     user = "*** decryption failed ***"
                     passw = "*** decryption failed ***"
 
