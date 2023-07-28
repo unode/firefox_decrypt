@@ -9,6 +9,8 @@ from simpletap.fdecrypt import lib
 class TestCorruptedPassword(unittest.TestCase):
     def validate_one(self, userkey, grepkey, output):
         expected = lib.get_user_data(userkey)
+        # Ignore DEBUG/verbose information when looking for the specified key
+        output = lib.grep("^(?!.*DEBUG).*$", output, context=0)
         matches = lib.grep(grepkey, output, context=1)
 
         self.assertEqual(matches, expected)
@@ -47,7 +49,7 @@ class TestCorruptedPassword(unittest.TestCase):
                                  "test_profile_firefox_nopassword_114")
 
         # Must run in non-interactive mode or password prompt will be shown
-        cmd = lib.get_script() + [self.test, "-n", "--non-fatal-decryption"]
+        cmd = lib.get_script() + [self.test, "-n", "--non-fatal-decryption", "-vv"]
 
         self.run_firefox_nopassword(cmd)
 
