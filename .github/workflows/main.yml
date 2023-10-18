@@ -1,5 +1,5 @@
 name: Test firefox_decrypt
-on: [push]
+on: [workflow_dispatch, push]
 
 jobs:
   test-firefox:
