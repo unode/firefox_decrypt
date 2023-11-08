@@ -194,12 +194,17 @@ class JsonCredentials(Credentials):
                 raise Exit(Exit.BAD_SECRETS)
 
             for i in logins:
-                yield (
-                    i["hostname"],
-                    i["encryptedUsername"],
-                    i["encryptedPassword"],
-                    i["encType"],
-                )
+                try:
+                    yield (
+                        i["hostname"],
+                        i["encryptedUsername"],
+                        i["encryptedPassword"],
+                        i["encType"],
+                    )
+                except KeyError:
+                    # This should handle deleted passwords that still maintain
+                    # a record in the JSON file - GitHub issue #99
+                    LOG.info(f"Skipped record {i} due to missing fields")
 
 
 def find_nss(locations, nssname) -> ct.CDLL:
