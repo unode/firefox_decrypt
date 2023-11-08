@@ -229,7 +229,7 @@ It is much appreciated.
 ### Contributors
 
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-16-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/github/all-contributors/unode/firefox_decrypt?color=ee8449&style=flat-square)](CONTRIBUTORS.md#contributors)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 See [CONTRIBUTORS.md](CONTRIBUTORS.md) for a complete list of contributions
