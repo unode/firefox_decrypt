@@ -1,7 +1,7 @@
 #### Changelog
 
 ##### 1.1.0+git
-- 
+- Fix unhandled exception with deleted passwords - see #99
 
 ##### 1.1.0
 - Include `pyproject.toml` to facilitate usage via `pipx`
