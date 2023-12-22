@@ -15,7 +15,7 @@ jobs:
       # Needed to force UTF-8 and have consistent behavior in Windows
       PYTHONUTF8: 1
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@main
       - name: Set up Python
         uses: actions/setup-python@master
         with:
