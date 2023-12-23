@@ -27,7 +27,7 @@ jobs:
         uses: browser-actions/setup-firefox@latest
         with:
           firefox-version: ${{ matrix.firefox }}
-      - name: Install nss by homebrew
+      - name: Install nss via homebrew
         if: ${{ matrix.os == 'macos' }}
         run: brew install nss
       - name: Run tests
