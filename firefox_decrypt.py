@@ -912,7 +912,7 @@ def get_profile(
                 raise
 
             if not os.path.isdir(profile):
-                LOG.error("Profile location '%s' is not a directory", profile)
+                LOG.error("Profile location '%s' is not a directory try running it as following python firefox_decrypt [Application Binary filepath from about:support][your arguments]", profile)
                 raise
         else:
             raise
