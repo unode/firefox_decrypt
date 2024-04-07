@@ -198,6 +198,16 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "longforrich",
+      "name": "longforrich",
+      "avatar_url": "https://avatars.githubusercontent.com/u/53457069?v=4",
+      "profile": "https://github.com/longforrich",
+      "contributions": [
+        "code",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
