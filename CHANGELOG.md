@@ -1,6 +1,9 @@
 #### Changelog
 
-##### 1.1.0+git
+##### 1.1.1+git
+- 
+
+##### 1.1.1
 - Fix unhandled exception with deleted passwords - see #99
 - Environment variable `NSS_LIB_PATH` can now be used to specify `libnss` location
 
