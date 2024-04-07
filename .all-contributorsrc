@@ -208,6 +208,15 @@
         "code",
         "ideas"
       ]
+    },
+    {
+      "login": "embeddedc",
+      "name": "embeddedc",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4259379?v=4",
+      "profile": "https://github.com/embeddedc",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
