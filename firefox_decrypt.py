@@ -276,8 +276,21 @@ def find_nss(locations, nssname) -> ct.CDLL:
         raise Exit(Exit.FAIL_LOCATE_NSS)
 
 
-def load_libnss():
+def load_libnss(nss_lib_dir):
     """Load libnss into python using the CDLL interface"""
+
+    if nss_lib_dir:
+        if SYSTEM == "Windows":
+            nssname = "nss3.dll"
+        elif SYSTEM == "Darwin":
+            nssname = "libnss3.dylib"
+        else:
+            nssname = "libnss3.so"
+
+        # no guess, just do it!
+        locations: list[str] = [os.path.normpath(nss_lib_dir)]
+        return find_nss(locations, nssname)
+
     if SYSTEM == "Windows":
         nssname = "nss3.dll"
         locations: list[str] = [
@@ -390,9 +403,9 @@ class NSSProxy:
     class PK11SlotInfo(ct.Structure):
         """Opaque structure representing a logical PKCS slot"""
 
-    def __init__(self, non_fatal_decryption=False):
+    def __init__(self, non_fatal_decryption=False, nss_lib_dir=None):
         # Locate libnss and try loading it
-        self.libnss = load_libnss()
+        self.libnss = load_libnss(nss_lib_dir)
         self.non_fatal_decryption = non_fatal_decryption
 
         SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
@@ -543,9 +556,9 @@ class MozillaInteraction:
     Abstraction interface to Mozilla profile and lib NSS
     """
 
-    def __init__(self, non_fatal_decryption=False):
+    def __init__(self, non_fatal_decryption=False, nss_lib_dir=None):
         self.profile = None
-        self.proxy = NSSProxy(non_fatal_decryption)
+        self.proxy = NSSProxy(non_fatal_decryption, nss_lib_dir)
 
     def load_profile(self, profile):
         """Initialize the NSS library and profile"""
@@ -1088,6 +1101,11 @@ def parse_sys_args() -> argparse.Namespace:
         help="Override default encoding (%(default)s).",
     )
     parser.add_argument(
+        "--nss-lib-dir",
+        metavar="DIR",
+        help="Set the directory that contains the NSS library(default, the NSS library is located in the same directory as Firefox executable)."
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -1184,7 +1202,7 @@ def main() -> None:
             )
 
     # Load Mozilla profile and initialize NSS before asking the user for input
-    moz = MozillaInteraction(args.non_fatal_decryption)
+    moz = MozillaInteraction(args.non_fatal_decryption, args.nss_lib_dir)
 
     basepath = os.path.expanduser(args.profile)
 
