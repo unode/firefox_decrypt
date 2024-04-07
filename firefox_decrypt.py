@@ -207,7 +207,7 @@ class JsonCredentials(Credentials):
                     LOG.info(f"Skipped record {i} due to missing fields")
 
 
-def find_nss(locations, nssname) -> ct.CDLL:
+def find_nss(locations: list[str], nssname: str) -> ct.CDLL:
     """Locate nss is one of the many possible locations"""
     fail_errors: list[tuple[str, str]] = []
 
@@ -278,9 +278,23 @@ def find_nss(locations, nssname) -> ct.CDLL:
 
 def load_libnss():
     """Load libnss into python using the CDLL interface"""
+
+    locations: list[str] = []
+
     if SYSTEM == "Windows":
         nssname = "nss3.dll"
-        locations: list[str] = [
+        if not SYS64:
+            locations += [
+                "",  # Current directory or system lib finder
+                "C:\\Program Files (x86)\\Mozilla Firefox",
+                "C:\\Program Files (x86)\\Firefox Developer Edition",
+                "C:\\Program Files (x86)\\Mozilla Thunderbird",
+                "C:\\Program Files (x86)\\Nightly",
+                "C:\\Program Files (x86)\\SeaMonkey",
+                "C:\\Program Files (x86)\\Waterfox",
+            ]
+
+        locations += [
             "",  # Current directory or system lib finder
             os.path.expanduser("~\\AppData\\Local\\Mozilla Firefox"),
             os.path.expanduser("~\\AppData\\Local\\Firefox Developer Edition"),
@@ -295,16 +309,6 @@ def load_libnss():
             "C:\\Program Files\\SeaMonkey",
             "C:\\Program Files\\Waterfox",
         ]
-        if not SYS64:
-            locations = [
-                "",  # Current directory or system lib finder
-                "C:\\Program Files (x86)\\Mozilla Firefox",
-                "C:\\Program Files (x86)\\Firefox Developer Edition",
-                "C:\\Program Files (x86)\\Mozilla Thunderbird",
-                "C:\\Program Files (x86)\\Nightly",
-                "C:\\Program Files (x86)\\SeaMonkey",
-                "C:\\Program Files (x86)\\Waterfox",
-            ] + locations
 
         # If either of the supported software is in PATH try to use it
         software = ["firefox", "thunderbird", "waterfox", "seamonkey"]
@@ -316,7 +320,7 @@ def load_libnss():
 
     elif SYSTEM == "Darwin":
         nssname = "libnss3.dylib"
-        locations = (
+        locations += [
             "",  # Current directory or system lib finder
             "/usr/local/lib/nss",
             "/usr/local/lib",
@@ -329,12 +333,12 @@ def load_libnss():
             "/Applications/Thunderbird.app/Contents/MacOS",
             "/Applications/SeaMonkey.app/Contents/MacOS",
             "/Applications/Waterfox.app/Contents/MacOS",
-        )
+        ]
 
     else:
         nssname = "libnss3.so"
         if SYS64:
-            locations = (
+            locations += [
                 "",  # Current directory or system lib finder
                 "/usr/lib64",
                 "/usr/lib64/nss",
@@ -345,9 +349,9 @@ def load_libnss():
                 "/opt/local/lib",
                 "/opt/local/lib/nss",
                 os.path.expanduser("~/.nix-profile/lib"),
-            )
+            ]
         else:
-            locations = (
+            locations += [
                 "",  # Current directory or system lib finder
                 "/usr/lib",
                 "/usr/lib/nss",
@@ -360,7 +364,7 @@ def load_libnss():
                 "/opt/local/lib",
                 "/opt/local/lib/nss",
                 os.path.expanduser("~/.nix-profile/lib"),
-            )
+            ]
 
     # If this succeeds libnss was loaded
     return find_nss(locations, nssname)
