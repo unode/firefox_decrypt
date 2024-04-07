@@ -3,3 +3,9 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# npm and all-contributors
+node_modules/
+package-lock.json
+package.json
+yarn.lock
