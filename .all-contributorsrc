@@ -217,6 +217,16 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "go9girl",
+      "name": "go9girl",
+      "avatar_url": "https://avatars.githubusercontent.com/u/159335355?v=4",
+      "profile": "https://github.com/go9girl",
+      "contributions": [
+        "a11y",
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
