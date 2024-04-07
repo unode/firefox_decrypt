@@ -279,7 +279,9 @@ def find_nss(locations: list[str], nssname: str) -> ct.CDLL:
 def load_libnss():
     """Load libnss into python using the CDLL interface"""
 
-    locations: list[str] = []
+    locations: list[str] = [
+        os.environ.get("NSS_LIB_PATH", ""),
+    ]
 
     if SYSTEM == "Windows":
         nssname = "nss3.dll"

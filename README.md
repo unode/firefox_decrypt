@@ -85,6 +85,28 @@ You can also choose from one of the supported formats with `--format`:
 
 (*) `pass` can produce unintended consequences. Make sure to backup your password store before using this option.
 
+##### Specify NSS library location
+
+In order to decode your passwords, Firefox Decrypt uses a series of heuristics to try to locate a compatible [NSS library](https://developer.mozilla.org/docs/Mozilla/Projects/NSS) on your system.
+As this approach can sometimes fail, starting with version 1.1.1 of Firefox Decrypt you can now define the `NSS_LIB_PATH` environment variable to manually specify the location of the library.
+This location will be prioritized and if no compatible library is found, the script will continue with the built-in heuristics.
+
+```
+# On Linux it will look for libnss3.so in /opt/nss/lib/
+# On Mac it will look for libnss3.dylib
+NSS_LIB_PATH=/opt/nss/lib/ python firefox_decrypt.py
+
+# On Windows it will look for nss3.dll
+set NSS_LIB_PATH=D:\NSS\lib\ && python firefox_decrypt.py
+```
+
+You can confirm if this was successful by running the script in high-verbosity mode (`-vv`) and look for the `Loaded NSS` message after `Loading NSS`:
+
+```
+(...) DEBUG - Loading NSS library from /opt/nss/lib/libnss3.so
+(...) DEBUG - Loaded NSS library from /opt/nss/lib/libnss3.so
+```
+
 ##### Non-interactive mode
 
 A non-interactive mode which bypasses all prompts, including profile choice and master password, can be enabled with `-n/--no-interactive`.

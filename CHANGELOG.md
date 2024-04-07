@@ -2,6 +2,7 @@
 
 ##### 1.1.0+git
 - Fix unhandled exception with deleted passwords - see #99
+- Environment variable `NSS_LIB_PATH` can now be used to specify `libnss` location
 
 ##### 1.1.0
 - Include `pyproject.toml` to facilitate usage via `pipx`
