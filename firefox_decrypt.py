@@ -988,6 +988,7 @@ def parse_sys_args() -> argparse.Namespace:
         profile_path = "~/Library/Application Support/Firefox"
     else:
         profile_path = "~/.mozilla/firefox"
+        snap_profile_path = "~/snap/firefox/common/.mozilla/firefox"
 
     parser = argparse.ArgumentParser(
         description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
@@ -1063,6 +1064,12 @@ def parse_sys_args() -> argparse.Namespace:
         "--pass-always-with-login",
         action="store_true",
         help="Always save as /<login> (default: only when multiple accounts per domain)",
+    )
+    parser.add_argument(
+        "--snap",
+        action="store_const",
+        const=snap_profile_path,
+        help=f"Use the snap install directory (default: {snap_profile_path})"
     )
     parser.add_argument(
         "-n",
@@ -1192,7 +1199,7 @@ def main() -> None:
     # Load Mozilla profile and initialize NSS before asking the user for input
     moz = MozillaInteraction(args.non_fatal_decryption)
 
-    basepath = os.path.expanduser(args.profile)
+    basepath = os.path.expanduser(args.snap or args.profile)
 
     # Read profiles from profiles.ini in profile folder
     profile = get_profile(basepath, args.interactive, args.choice, args.list)
