@@ -330,6 +330,7 @@ def load_libnss():
             "/sw/lib/firefox",
             "/sw/lib/mozilla",
             "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
+            "/opt/homebrew/lib", # nss installed with Brew on Darwin/Apple Silicon
             "/opt/pkg/lib/nss",  # installed via pkgsrc
             "/Applications/Firefox.app/Contents/MacOS",  # default manual install location
             "/Applications/Thunderbird.app/Contents/MacOS",

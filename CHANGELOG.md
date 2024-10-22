@@ -1,7 +1,7 @@
 #### Changelog
 
 ##### 1.1.1+git
-- 
+- Include Darwin homebrew path in nss search locations
 
 ##### 1.1.1
 - Fix unhandled exception with deleted passwords - see #99
