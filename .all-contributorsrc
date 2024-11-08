@@ -227,6 +227,15 @@
         "a11y",
         "ideas"
       ]
+    },
+    {
+      "login": "CedricLevasseur",
+      "name": "Cédric Levasseur",
+      "avatar_url": "https://avatars.githubusercontent.com/u/233306?v=4",
+      "profile": "http://www.cedriclevasseur.com/",
+      "contributions": [
+        "code"
+      ]
     }
   ],
   "contributorsPerLine": 7,
