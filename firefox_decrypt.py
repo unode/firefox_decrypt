@@ -337,7 +337,7 @@ def load_libnss():
             "/Applications/SeaMonkey.app/Contents/MacOS",
             "/Applications/Waterfox.app/Contents/MacOS",
         ]
-
+    
     else:
         nssname = "libnss3.so"
         if SYS64:
@@ -987,6 +987,13 @@ def parse_sys_args() -> argparse.Namespace:
         profile_path = os.path.join(os.environ["APPDATA"], "Mozilla", "Firefox")
     elif os.uname()[0] == "Darwin":
         profile_path = "~/Library/Application Support/Firefox"
+    
+    elif "buntu" in platform.version():
+        try:
+            profile_path = "~/snap/firefox/common/.mozilla/firefox" # accounts for snaps
+        except:
+            profile_path = "~/.mozilla/firefox"
+    
     else:
         profile_path = "~/.mozilla/firefox"
 
