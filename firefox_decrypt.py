@@ -15,6 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Based on original work from: www.dumpzilla.org
+#
+# One-Shot --dump-all-profiles added by blackout aka SCRAMBLR ©MMXXV
+# May require setting param: set PYTHONUTF8=1
+#
+#
 
 from __future__ import annotations
 
@@ -59,7 +64,6 @@ def get_version() -> str:
     """Obtain version information from git if available otherwise use
     the internal version number
     """
-
     def internal_version():
         return ".".join(map(str, __version_info__[:3])) + "".join(__version_info__[3:])
 
@@ -80,13 +84,11 @@ __version__: str = get_version()
 
 class NotFoundError(Exception):
     """Exception to handle situations where a credentials file is not found"""
-
     pass
 
 
 class Exit(Exception):
     """Exception to allow a clean exit from any point in execution"""
-
     CLEAN = 0
     ERROR = 1
     MISSING_PROFILEINI = 2
@@ -125,14 +127,11 @@ class Exit(Exception):
 
 class Credentials:
     """Base credentials backend manager"""
-
     def __init__(self, db):
         self.db = db
-
         LOG.debug("Database location: %s", self.db)
         if not os.path.isfile(db):
             raise NotFoundError(f"ERROR - {db} database not found\n")
-
         LOG.info("Using %s for credentials.", db)
 
     def __iter__(self) -> Iterator[tuple[str, str, str, int]]:
@@ -147,12 +146,9 @@ class Credentials:
 
 class SqliteCredentials(Credentials):
     """SQLite credentials backend manager"""
-
     def __init__(self, profile):
         db = os.path.join(profile, "signons.sqlite")
-
         super(SqliteCredentials, self).__init__(db)
-
         self.conn = sqlite3.connect(db)
         self.c = self.conn.cursor()
 
@@ -163,36 +159,29 @@ class SqliteCredentials(Credentials):
             "FROM moz_logins"
         )
         for i in self.c:
-            # yields hostname, encryptedUsername, encryptedPassword, encType
             yield i
 
     def done(self):
-        """Close the sqlite cursor and database connection"""
         super(SqliteCredentials, self).done()
-
         self.c.close()
         self.conn.close()
 
 
 class JsonCredentials(Credentials):
     """JSON credentials backend manager"""
-
     def __init__(self, profile):
         db = os.path.join(profile, "logins.json")
-
         super(JsonCredentials, self).__init__(db)
 
     def __iter__(self) -> Iterator[tuple[str, str, str, int]]:
         with open(self.db) as fh:
             LOG.debug("Reading password database in JSON format")
             data = json.load(fh)
-
             try:
                 logins = data["logins"]
             except Exception:
                 LOG.error(f"Unrecognized format in {self.db}")
                 raise Exit(Exit.BAD_SECRETS)
-
             for i in logins:
                 try:
                     yield (
@@ -202,37 +191,24 @@ class JsonCredentials(Credentials):
                         i["encType"],
                     )
                 except KeyError:
-                    # This should handle deleted passwords that still maintain
-                    # a record in the JSON file - GitHub issue #99
                     LOG.info(f"Skipped record {i} due to missing fields")
 
 
 def find_nss(locations: list[str], nssname: str) -> ct.CDLL:
     """Locate nss is one of the many possible locations"""
     fail_errors: list[tuple[str, str]] = []
-
     OS = ("Windows", "Darwin")
-
     for loc in locations:
         nsslib = os.path.join(loc, nssname)
         LOG.debug("Loading NSS library from %s", nsslib)
-
         if SYSTEM in OS:
-            # On windows in order to find DLLs referenced by nss3.dll
-            # we need to have those locations on PATH
             os.environ["PATH"] = ";".join([loc, os.environ["PATH"]])
             LOG.debug("PATH is now %s", os.environ["PATH"])
-            # However this doesn't seem to work on all setups and needs to be
-            # set before starting python so as a workaround we chdir to
-            # Firefox's nss3.dll/libnss3.dylib location
             if loc:
                 if not os.path.isdir(loc):
-                    # No point in trying to load from paths that don't exist
                     continue
-
                 workdir = os.getcwd()
                 os.chdir(loc)
-
         try:
             nss: ct.CDLL = ct.CDLL(nsslib)
         except OSError as e:
@@ -242,52 +218,36 @@ def find_nss(locations: list[str], nssname: str) -> ct.CDLL:
             return nss
         finally:
             if SYSTEM in OS and loc:
-                # Restore workdir changed above
                 os.chdir(workdir)
-
     else:
         LOG.error(
             "Couldn't find or load '%s'. This library is essential "
-            "to interact with your Mozilla profile.",
-            nssname,
-        )
+            "to interact with your Mozilla profile.", nssname)
         LOG.error(
             "If you are seeing this error please perform a system-wide "
             "search for '%s' and file a bug report indicating any "
-            "location found. Thanks!",
-            nssname,
-        )
+            "location found. Thanks!", nssname)
         LOG.error(
             "Alternatively you can try launching firefox_decrypt "
             "from the location where you found '%s'. "
             "That is 'cd' or 'chdir' to that location and run "
-            "firefox_decrypt from there.",
-            nssname,
-        )
-
+            "firefox_decrypt from there.", nssname)
         LOG.error(
             "Please also include the following on any bug report. "
-            "Errors seen while searching/loading NSS:"
-        )
-
+            "Errors seen while searching/loading NSS:")
         for target, error in fail_errors:
             LOG.error("Error when loading %s was %s", target, error)
-
         raise Exit(Exit.FAIL_LOCATE_NSS)
 
 
 def load_libnss():
     """Load libnss into python using the CDLL interface"""
-
-    locations: list[str] = [
-        os.environ.get("NSS_LIB_PATH", ""),
-    ]
-
+    locations: list[str] = [os.environ.get("NSS_LIB_PATH", "")]
     if SYSTEM == "Windows":
         nssname = "nss3.dll"
         if not SYS64:
             locations += [
-                "",  # Current directory or system lib finder
+                "",
                 "C:\\Program Files (x86)\\Mozilla Firefox",
                 "C:\\Program Files (x86)\\Firefox Developer Edition",
                 "C:\\Program Files (x86)\\Mozilla Thunderbird",
@@ -295,9 +255,8 @@ def load_libnss():
                 "C:\\Program Files (x86)\\SeaMonkey",
                 "C:\\Program Files (x86)\\Waterfox",
             ]
-
         locations += [
-            "",  # Current directory or system lib finder
+            "",
             os.path.expanduser("~\\AppData\\Local\\Mozilla Firefox"),
             os.path.expanduser("~\\AppData\\Local\\Firefox Developer Edition"),
             os.path.expanduser("~\\AppData\\Local\\Mozilla Thunderbird"),
@@ -311,38 +270,34 @@ def load_libnss():
             "C:\\Program Files\\SeaMonkey",
             "C:\\Program Files\\Waterfox",
         ]
-
-        # If either of the supported software is in PATH try to use it
         software = ["firefox", "thunderbird", "waterfox", "seamonkey"]
         for binary in software:
             location: Optional[str] = shutil.which(binary)
             if location is not None:
                 nsslocation: str = os.path.join(os.path.dirname(location), nssname)
                 locations.append(nsslocation)
-
     elif SYSTEM == "Darwin":
         nssname = "libnss3.dylib"
         locations += [
-            "",  # Current directory or system lib finder
+            "",
             "/usr/local/lib/nss",
             "/usr/local/lib",
             "/opt/local/lib/nss",
             "/sw/lib/firefox",
             "/sw/lib/mozilla",
-            "/usr/local/opt/nss/lib",  # nss installed with Brew on Darwin
-            "/opt/homebrew/lib", # nss installed with Brew on Darwin/Apple Silicon
-            "/opt/pkg/lib/nss",  # installed via pkgsrc
-            "/Applications/Firefox.app/Contents/MacOS",  # default manual install location
+            "/usr/local/opt/nss/lib",
+            "/opt/homebrew/lib",
+            "/opt/pkg/lib/nss",
+            "/Applications/Firefox.app/Contents/MacOS",
             "/Applications/Thunderbird.app/Contents/MacOS",
             "/Applications/SeaMonkey.app/Contents/MacOS",
             "/Applications/Waterfox.app/Contents/MacOS",
         ]
-
     else:
         nssname = "libnss3.so"
         if SYS64:
             locations += [
-                "",  # Current directory or system lib finder
+                "",
                 "/usr/lib64",
                 "/usr/lib64/nss",
                 "/usr/lib",
@@ -355,7 +310,7 @@ def load_libnss():
             ]
         else:
             locations += [
-                "",  # Current directory or system lib finder
+                "",
                 "/usr/lib",
                 "/usr/lib/nss",
                 "/usr/lib32",
@@ -368,14 +323,11 @@ def load_libnss():
                 "/opt/local/lib/nss",
                 os.path.expanduser("~/.nix-profile/lib"),
             ]
-
-    # If this succeeds libnss was loaded
     return find_nss(locations, nssname)
 
 
 class c_char_p_fromstr(ct.c_char_p):
     """ctypes char_p override that handles encoding str to bytes"""
-
     def from_param(self):
         return self.encode(DEFAULT_ENCODING)
 
@@ -383,13 +335,11 @@ class c_char_p_fromstr(ct.c_char_p):
 class NSSProxy:
     class SECItem(ct.Structure):
         """struct needed to interact with libnss"""
-
         _fields_ = [
             ("type", ct.c_uint),
-            ("data", ct.c_char_p),  # actually: unsigned char *
+            ("data", ct.c_char_p),
             ("len", ct.c_uint),
         ]
-
         def decode_data(self):
             _bytes = ct.string_at(self.data, self.len)
             return _bytes.decode(DEFAULT_ENCODING)
@@ -398,58 +348,42 @@ class NSSProxy:
         """Opaque structure representing a logical PKCS slot"""
 
     def __init__(self, non_fatal_decryption=False):
-        # Locate libnss and try loading it
         self.libnss = load_libnss()
         self.non_fatal_decryption = non_fatal_decryption
-
         SlotInfoPtr = ct.POINTER(self.PK11SlotInfo)
         SECItemPtr = ct.POINTER(self.SECItem)
-
         self._set_ctypes(ct.c_int, "NSS_Init", c_char_p_fromstr)
         self._set_ctypes(ct.c_int, "NSS_Shutdown")
         self._set_ctypes(SlotInfoPtr, "PK11_GetInternalKeySlot")
         self._set_ctypes(None, "PK11_FreeSlot", SlotInfoPtr)
         self._set_ctypes(ct.c_int, "PK11_NeedLogin", SlotInfoPtr)
         self._set_ctypes(
-            ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, c_char_p_fromstr
-        )
+            ct.c_int, "PK11_CheckUserPassword", SlotInfoPtr, c_char_p_fromstr)
         self._set_ctypes(
-            ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p
-        )
+            ct.c_int, "PK11SDR_Decrypt", SECItemPtr, SECItemPtr, ct.c_void_p)
         self._set_ctypes(None, "SECITEM_ZfreeItem", SECItemPtr, ct.c_int)
-
-        # for error handling
         self._set_ctypes(ct.c_int, "PORT_GetError")
         self._set_ctypes(ct.c_char_p, "PR_ErrorToName", ct.c_int)
         self._set_ctypes(ct.c_char_p, "PR_ErrorToString", ct.c_int, ct.c_uint32)
 
     def _set_ctypes(self, restype, name, *argtypes):
-        """Set input/output types on libnss C functions for automatic type casting"""
         res = getattr(self.libnss, name)
         res.argtypes = argtypes
         res.restype = restype
-
-        # Transparently handle decoding to string when returning a c_char_p
         if restype == ct.c_char_p:
-
             def _decode(result, func, *args):
                 try:
                     return result.decode(DEFAULT_ENCODING)
                 except AttributeError:
                     return result
-
             res.errcheck = _decode
-
         setattr(self, "_" + name, res)
 
     def initialize(self, profile: str):
-        # The sql: prefix ensures compatibility with both
-        # Berkley DB (cert8) and Sqlite (cert9) dbs
         profile_path = "sql:" + profile
         LOG.debug("Initializing NSS with profile '%s'", profile_path)
         err_status: int = self._NSS_Init(profile_path)
         LOG.debug("Initializing NSS returned %s", err_status)
-
         if err_status:
             self.handle_error(
                 Exit.FAIL_INIT_NSS,
@@ -459,7 +393,6 @@ class NSSProxy:
 
     def shutdown(self):
         err_status: int = self._NSS_Shutdown()
-
         if err_status:
             self.handle_error(
                 Exit.FAIL_SHUTDOWN_NSS,
@@ -467,123 +400,84 @@ class NSSProxy:
             )
 
     def authenticate(self, profile, interactive):
-        """Unlocks the profile if necessary, in which case a password
-        will prompted to the user.
-        """
         LOG.debug("Retrieving internal key slot")
         keyslot = self._PK11_GetInternalKeySlot()
-
         LOG.debug("Internal key slot %s", keyslot)
         if not keyslot:
             self.handle_error(
                 Exit.FAIL_NSS_KEYSLOT,
                 "Failed to retrieve internal KeySlot",
             )
-
         try:
             if self._PK11_NeedLogin(keyslot):
                 password: str = ask_password(profile, interactive)
-
                 LOG.debug("Authenticating with password '%s'", password)
                 err_status: int = self._PK11_CheckUserPassword(keyslot, password)
-
                 LOG.debug("Checking user password returned %s", err_status)
-
                 if err_status:
                     self.handle_error(
                         Exit.BAD_PRIMARY_PASSWORD,
                         "Primary password is not correct",
                     )
-
             else:
                 LOG.info("No Primary Password found - no authentication needed")
         finally:
-            # Avoid leaking PK11KeySlot
             self._PK11_FreeSlot(keyslot)
 
     def handle_error(self, exitcode: int, *logerror: Any):
-        """If an error happens in libnss, handle it and print some debug information"""
         if logerror:
             LOG.error(*logerror)
         else:
             LOG.debug("Error during a call to NSS library, trying to obtain error info")
-
         code = self._PORT_GetError()
         name = self._PR_ErrorToName(code)
         name = "NULL" if name is None else name
-        # 0 is the default language (localization related)
         text = self._PR_ErrorToString(code, 0)
-
         LOG.debug("%s: %s", name, text)
-
         raise Exit(exitcode)
 
     def decrypt(self, data64):
         data = b64decode(data64)
         inp = self.SECItem(0, data, len(data))
         out = self.SECItem(0, None, 0)
-
         err_status: int = self._PK11SDR_Decrypt(inp, out, None)
         LOG.debug("Decryption of data returned %s", err_status)
         try:
-            if err_status:  # -1 means password failed, other status are unknown
+            if err_status:
                 error_msg = (
                     "Username/Password decryption failed. "
-                    "Credentials damaged or cert/key file mismatch."
-                )
-
+                    "Credentials damaged or cert/key file mismatch.")
                 if self.non_fatal_decryption:
                     raise ValueError(error_msg)
                 else:
                     self.handle_error(Exit.DECRYPTION_FAILED, error_msg)
-
             res = out.decode_data()
         finally:
-            # Avoid leaking SECItem
             self._SECITEM_ZfreeItem(out, 0)
-
         return res
 
 
 class MozillaInteraction:
-    """
-    Abstraction interface to Mozilla profile and lib NSS
-    """
-
     def __init__(self, non_fatal_decryption=False):
         self.profile = None
         self.proxy = NSSProxy(non_fatal_decryption)
 
     def load_profile(self, profile):
-        """Initialize the NSS library and profile"""
         self.profile = profile
         self.proxy.initialize(self.profile)
 
     def authenticate(self, interactive):
-        """Authenticate the the current profile is protected by a primary password,
-        prompt the user and unlock the profile.
-        """
         self.proxy.authenticate(self.profile, interactive)
 
-    def unload_profile(self):
-        """Shutdown NSS and deactivate current profile"""
-        self.proxy.shutdown()
-
     def decrypt_passwords(self) -> PWStore:
-        """Decrypt requested profile using the provided password.
-        Returns all passwords in a list of dicts
-        """
         credentials: Credentials = self.obtain_credentials()
-
         LOG.info("Decrypting credentials")
         outputs: PWStore = []
-
         url: str
         user: str
         passw: str
         enctype: int
         for url, user, passw, enctype in credentials:
-            # enctype informs if passwords need to be decrypted
             if enctype:
                 try:
                     LOG.debug("Decrypting username data '%s'", user)
@@ -598,27 +492,20 @@ class MozillaInteraction:
                     LOG.debug(e, exc_info=True)
                     user = "*** decryption failed ***"
                     passw = "*** decryption failed ***"
-
             LOG.debug(
                 "Decoded username '%s' and password '%s' for website '%s'",
                 user,
                 passw,
                 url,
             )
-
             output = {"url": url, "user": user, "password": passw}
             outputs.append(output)
-
         if not outputs:
             LOG.warning("No passwords found in selected profile")
-
-        # Close credential handles (SQL)
         credentials.done()
-
         return outputs
 
     def obtain_credentials(self) -> Credentials:
-        """Figure out which of the 2 possible backend credential engines is available"""
         credentials: Credentials
         try:
             credentials = JsonCredentials(self.profile)
@@ -627,11 +514,12 @@ class MozillaInteraction:
                 credentials = SqliteCredentials(self.profile)
             except NotFoundError:
                 LOG.error(
-                    "Couldn't find credentials file (logins.json or signons.sqlite)."
-                )
+                    "Couldn't find credentials file (logins.json or signons.sqlite).")
                 raise Exit(Exit.MISSING_SECRETS)
-
         return credentials
+
+    def unload_profile(self):
+        self.proxy.shutdown()
 
 
 class OutputFormat:
@@ -657,7 +545,6 @@ class HumanOutputFormat(OutputFormat):
 class JSONOutputFormat(OutputFormat):
     def output(self):
         sys.stdout.write(json.dumps(self.pwstore, indent=2))
-        # Json dumps doesn't add the final newline
         sys.stdout.write("\n")
 
 
@@ -679,7 +566,6 @@ class CSVOutputFormat(OutputFormat):
         )
         if self.header:
             csv_writer.writeheader()
-
         for output in self.pwstore:
             csv_writer.writerow(output)
 
@@ -705,11 +591,7 @@ class PassOutputFormat(OutputFormat):
         self.export()
 
     def test_pass_cmd(self) -> None:
-        """Check if pass from passwordstore.org is installed
-        If it is installed but not initialized, initialize it
-        """
         LOG.debug("Testing if password store is installed and configured")
-
         try:
             p = run([self.cmd, "ls"], capture_output=True, text=True)
         except FileNotFoundError as e:
@@ -720,9 +602,7 @@ class PassOutputFormat(OutputFormat):
                 LOG.error("Unknown error happened.")
                 LOG.error("Error was '%s'", e)
                 raise Exit(Exit.UNKNOWN_ERROR)
-
         LOG.debug("pass returned:\nStdout: %s\nStderr: %s", p.stdout, p.stderr)
-
         if p.returncode != 0:
             if 'Try "pass init"' in p.stderr:
                 LOG.error("Password store was not initialized.")
@@ -734,56 +614,33 @@ class PassOutputFormat(OutputFormat):
                 raise Exit(Exit.UNKNOWN_ERROR)
 
     def preprocess_outputs(self):
-        # Format of "self.to_export" should be:
-        #     {"address": {"login": "password", ...}, ...}
         self.to_export: dict[str, dict[str, str]] = {}
-
         for record in self.pwstore:
             url = record["url"]
             user = record["user"]
             passw = record["password"]
-
-            # Keep track of web-address, username and passwords
-            # If more than one username exists for the same web-address
-            # the username will be used as name of the file
             address = urlparse(url)
-
             if address.netloc not in self.to_export:
                 self.to_export[address.netloc] = {user: passw}
-
             else:
                 self.to_export[address.netloc][user] = passw
 
     def export(self):
-        """Export given passwords to password store
-
-        Format of "to_export" should be:
-            {"address": {"login": "password", ...}, ...}
-        """
         LOG.info("Exporting credentials to password store")
         if self.prefix:
             prefix = f"{self.prefix}/"
         else:
             prefix = self.prefix
-
         LOG.debug("Using pass prefix '%s'", prefix)
-
         for address in self.to_export:
             for user, passw in self.to_export[address].items():
-                # When more than one account exist for the same address, add
-                # the login to the password identifier
                 if self.always_with_login or len(self.to_export[address]) > 1:
                     passname = f"{prefix}{address}/{user}"
                 else:
                     passname = f"{prefix}{address}"
-
                 LOG.info("Exporting credentials for '%s'", passname)
-
                 data = f"{passw}\n{self.username_prefix}{user}\n"
-
                 LOG.debug("Inserting pass '%s' '%s'", passname, data)
-
-                # NOTE --force is used. Existing passwords will be overwritten
                 cmd: list[str] = [
                     self.cmd,
                     "insert",
@@ -791,25 +648,17 @@ class PassOutputFormat(OutputFormat):
                     "--multiline",
                     passname,
                 ]
-
                 LOG.debug("Running command '%s' with stdin '%s'", cmd, data)
-
                 p = run(cmd, input=data, capture_output=True, text=True)
-
                 if p.returncode != 0:
                     LOG.error(
-                        "ERROR: passwordstore exited with non-zero: %s", p.returncode
-                    )
+                        "ERROR: passwordstore exited with non-zero: %s", p.returncode)
                     LOG.error("Stdout: %s\nStderr: %s", p.stdout, p.stderr)
                     raise Exit(Exit.PASSSTORE_ERROR)
-
                 LOG.debug("Successfully exported '%s'", passname)
 
 
 def get_sections(profiles):
-    """
-    Returns hash of profile numbers and profile names.
-    """
     sections = {}
     i = 1
     for section in profiles.sections():
@@ -822,19 +671,12 @@ def get_sections(profiles):
 
 
 def print_sections(sections, textIOWrapper=sys.stderr):
-    """
-    Prints all available sections to an textIOWrapper (defaults to sys.stderr)
-    """
     for i in sorted(sections):
         textIOWrapper.write(f"{i} -> {sections[i]}\n")
     textIOWrapper.flush()
 
 
 def ask_section(sections: ConfigParser):
-    """
-    Prompt the user which profile should be used for decryption
-    """
-    # Do not ask for choice if user already gave one
     choice = "ASK"
     while choice not in sections:
         sys.stderr.write("Select the Mozilla profile you wish to decrypt\n")
@@ -844,80 +686,49 @@ def ask_section(sections: ConfigParser):
         except EOFError:
             LOG.error("Could not read Choice, got EOF")
             raise Exit(Exit.READ_GOT_EOF)
-
     try:
         final_choice = sections[choice]
     except KeyError:
         LOG.error("Profile No. %s does not exist!", choice)
         raise Exit(Exit.NO_SUCH_PROFILE)
-
     LOG.debug("Profile selection matched %s", final_choice)
-
     return final_choice
 
 
 def ask_password(profile: str, interactive: bool) -> str:
-    """
-    Prompt for profile password
-    """
     passwd: str
     passmsg = f"\nPrimary Password for profile {profile}: "
-
     if sys.stdin.isatty() and interactive:
         passwd = getpass(passmsg)
     else:
         sys.stderr.write("Reading Primary password from standard input:\n")
         sys.stderr.flush()
-        # Ability to read the password from stdin (echo "pass" | ./firefox_...)
         passwd = sys.stdin.readline().rstrip("\n")
-
     return passwd
 
 
 def read_profiles(basepath):
-    """
-    Parse Firefox profiles in provided location.
-    If list_profiles is true, will exit after listing available profiles.
-    """
     profileini = os.path.join(basepath, "profiles.ini")
-
     LOG.debug("Reading profiles from %s", profileini)
-
     if not os.path.isfile(profileini):
         LOG.warning("profile.ini not found in %s", basepath)
         raise Exit(Exit.MISSING_PROFILEINI)
-
-    # Read profiles from Firefox profile folder
     profiles = ConfigParser()
     profiles.read(profileini, encoding=DEFAULT_ENCODING)
-
     LOG.debug("Read profiles %s", profiles.sections())
-
     return profiles
 
 
-def get_profile(
-    basepath: str, interactive: bool, choice: Optional[str], list_profiles: bool
-):
-    """
-    Select profile to use by either reading profiles.ini or assuming given
-    path is already a profile
-    If interactive is false, will not try to ask which profile to decrypt.
-    choice contains the choice the user gave us as an CLI arg.
-    If list_profiles is true will exits after listing all available profiles.
-    """
+def get_profile(basepath: str, interactive: bool, choice: Optional[str], list_profiles: bool):
     try:
         profiles: ConfigParser = read_profiles(basepath)
-
     except Exit as e:
         if e.exitcode == Exit.MISSING_PROFILEINI:
             LOG.warning("Continuing and assuming '%s' is a profile location", basepath)
             profile = basepath
-
             if list_profiles:
                 LOG.error("Listing single profiles not permitted.")
                 raise
-
             if not os.path.isdir(profile):
                 LOG.error("Profile location '%s' is not a directory", profile)
                 raise
@@ -928,50 +739,78 @@ def get_profile(
             LOG.debug("Listing available profiles...")
             print_sections(get_sections(profiles), sys.stdout)
             raise Exit(Exit.CLEAN)
-
         sections = get_sections(profiles)
-
         if len(sections) == 1:
             section = sections["1"]
-
         elif choice is not None:
             try:
                 section = sections[choice]
             except KeyError:
                 LOG.error("Profile No. %s does not exist!", choice)
                 raise Exit(Exit.NO_SUCH_PROFILE)
-
         elif not interactive:
             LOG.error(
                 "Don't know which profile to decrypt. "
-                "We are in non-interactive mode and -c/--choice wasn't specified."
-            )
+                "We are in non-interactive mode and -c/--choice wasn't specified.")
             raise Exit(Exit.MISSING_CHOICE)
-
         else:
-            # Ask user which profile to open
             section = ask_section(sections)
-
         section = section
         profile = os.path.join(basepath, section)
-
         if not os.path.isdir(profile):
             LOG.error(
                 "Profile location '%s' is not a directory. Has profiles.ini been tampered with?",
                 profile,
             )
             raise Exit(Exit.BAD_PROFILEINI)
-
     return profile
 
 
-# From https://bugs.python.org/msg323681
-class ConvertChoices(argparse.Action):
-    """Argparse action that interprets the `choices` argument as a dict
-    mapping the user-specified choices values to the resulting option
-    values.
-    """
+def process_all_profiles(basepath: str, args: argparse.Namespace):
+    """Process all profiles found in profiles.ini, decrypting passwords for each."""
+    profiles = read_profiles(basepath)
+    sections = get_sections(profiles)
+    if not sections:
+        LOG.error("No profiles found in %s", basepath)
+        raise Exit(Exit.MISSING_PROFILEINI)
+    moz = MozillaInteraction(args.non_fatal_decryption)
+    for i in sorted(sections):
+        profile = os.path.join(basepath, sections[i])
+        if not os.path.isdir(profile):
+            LOG.error("Profile location '%s' is not a directory", profile)
+            if args.non_fatal_decryption:
+                LOG.info("Skipping invalid profile %s due to --non-fatal-decryption", sections[i])
+                continue
+            raise Exit(Exit.BAD_PROFILEINI)
+        sys.stdout.write(f"\nProcessing profile {i}: {sections[i]}\n")
+        sys.stdout.flush()
+        try:
+            moz.load_profile(profile)
+            moz.authenticate(args.interactive)
+            outputs = moz.decrypt_passwords()
+            formatter = args.format(outputs, args)
+            formatter.output()
+        except Exit as e:
+            LOG.error(f"Failed to process profile {sections[i]}: {e}")
+            if args.non_fatal_decryption:
+                LOG.info("Skipping profile %s due to error %s with --non-fatal-decryption", sections[i], e.exitcode)
+                continue
+            raise
+        except Exception as e:
+            LOG.error(f"Unexpected error processing profile {sections[i]}: {e}")
+            if args.non_fatal_decryption:
+                LOG.info("Skipping profile %s due to unexpected error with --non-fatal-decryption", sections[i])
+                continue
+            raise
+        finally:
+            try:
+                moz.unload_profile()
+            except Exit as e:
+                LOG.warning(f"Failed to shutdown NSS for profile {sections[i]}: {e}")
+    LOG.info("Finished processing all profiles")
 
+
+class ConvertChoices(argparse.Action):
     def __init__(self, *args, choices, **kwargs):
         super().__init__(*args, choices=choices.keys(), **kwargs)
         self.mapping = choices
@@ -981,25 +820,20 @@ class ConvertChoices(argparse.Action):
 
 
 def parse_sys_args() -> argparse.Namespace:
-    """Parse command line arguments"""
-
     if SYSTEM == "Windows":
         profile_path = os.path.join(os.environ["APPDATA"], "Mozilla", "Firefox")
     elif os.uname()[0] == "Darwin":
         profile_path = "~/Library/Application Support/Firefox"
     else:
         profile_path = "~/.mozilla/firefox"
-
     parser = argparse.ArgumentParser(
-        description="Access Firefox/Thunderbird profiles and decrypt existing passwords"
-    )
+        description="Access Firefox/Thunderbird profiles and decrypt existing passwords")
     parser.add_argument(
         "profile",
         nargs="?",
         default=profile_path,
         help=f"Path to profile folder (default: {profile_path})",
     )
-
     format_choices = {
         "human": HumanOutputFormat,
         "json": JSONOutputFormat,
@@ -1007,7 +841,6 @@ def parse_sys_args() -> argparse.Namespace:
         "tabular": TabularOutputFormat,
         "pass": PassOutputFormat,
     }
-
     parser.add_argument(
         "-f",
         "--format",
@@ -1085,8 +918,10 @@ def parse_sys_args() -> argparse.Namespace:
         help="The profile to use (starts with 1). If only one profile, defaults to that.",
     )
     parser.add_argument(
-        "-l", "--list", action="store_true", help="List profiles and exit."
-    )
+        "-l", "--list", action="store_true", help="List profiles and exit.")
+    parser.add_argument(
+        "--dump-all-profiles", action="store_true",
+        help="Decrypt and dump passwords from all profiles.")
     parser.add_argument(
         "-e",
         "--encoding",
@@ -1107,67 +942,50 @@ def parse_sys_args() -> argparse.Namespace:
         version=__version__,
         help="Display version of firefox_decrypt and exit",
     )
-
     args = parser.parse_args()
-
-    # understand `\t` as tab character if specified as delimiter.
     if args.csv_delimiter == "\\t":
         args.csv_delimiter = "\t"
-
     return args
 
 
 def setup_logging(args) -> None:
-    """Setup the logging level and configure the basic logger"""
     if args.verbose == 1:
         level = logging.INFO
     elif args.verbose >= 2:
         level = logging.DEBUG
     else:
         level = logging.WARN
-
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(message)s",
         level=level,
     )
-
     global LOG
     LOG = logging.getLogger(__name__)
 
 
 def identify_system_locale() -> str:
     encoding: Optional[str] = locale.getpreferredencoding()
-
     if encoding is None:
         LOG.error(
             "Could not determine which encoding/locale to use for NSS interaction. "
             "This configuration is unsupported.\n"
             "If you are in Linux or MacOS, please search online "
-            "how to configure a UTF-8 compatible locale and try again."
-        )
+            "how to configure a UTF-8 compatible locale and try again.")
         raise Exit(Exit.BAD_LOCALE)
-
     return encoding
 
 
 def main() -> None:
-    """Main entry point"""
     args = parse_sys_args()
-
     setup_logging(args)
-
     global DEFAULT_ENCODING
-
     if args.encoding != DEFAULT_ENCODING:
         LOG.info(
             "Overriding default encoding from '%s' to '%s'",
             DEFAULT_ENCODING,
             args.encoding,
         )
-
-        # Override default encoding if specified by user
         DEFAULT_ENCODING = args.encoding
-
     LOG.info("Running firefox_decrypt version: %s", __version__)
     LOG.debug("Parsed commandline arguments: %s", args)
     encodings = (
@@ -1176,11 +994,8 @@ def main() -> None:
         ("stderr", sys.stderr.encoding),
         ("locale", identify_system_locale()),
     )
-
     LOG.debug(
-        "Running with encodings: %s: %s, %s: %s, %s: %s, %s: %s", *chain(*encodings)
-    )
-
+        "Running with encodings: %s: %s, %s: %s, %s: %s, %s: %s", *chain(*encodings))
     for stream, encoding in encodings:
         if encoding.lower() != DEFAULT_ENCODING:
             LOG.warning(
@@ -1189,27 +1004,18 @@ def main() -> None:
                 stream,
                 encoding,
             )
-
-    # Load Mozilla profile and initialize NSS before asking the user for input
-    moz = MozillaInteraction(args.non_fatal_decryption)
-
+    if args.dump_all_profiles:
+        basepath = os.path.expanduser(args.profile)
+        process_all_profiles(basepath, args)
+        raise Exit(Exit.CLEAN)
     basepath = os.path.expanduser(args.profile)
-
-    # Read profiles from profiles.ini in profile folder
+    moz = MozillaInteraction(args.non_fatal_decryption)
     profile = get_profile(basepath, args.interactive, args.choice, args.list)
-
-    # Start NSS for selected profile
     moz.load_profile(profile)
-    # Check if profile is password protected and prompt for a password
     moz.authenticate(args.interactive)
-    # Decode all passwords
     outputs = moz.decrypt_passwords()
-
-    # Export passwords into one of many formats
     formatter = args.format(outputs, args)
     formatter.output()
-
-    # Finally shutdown NSS
     moz.unload_profile()
 
 
