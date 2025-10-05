@@ -1114,7 +1114,6 @@ def parse_sys_args() -> argparse.Namespace:
         default=False,
         help="Tries to decrypt all profiles.",
         )
-    # make a loop in main to do the whole process with all profiles. :')
 
     args = parser.parse_args()
 
