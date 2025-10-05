@@ -516,7 +516,7 @@ class NSSProxy:
 
         LOG.debug("%s: %s", name, text)
 
-        raise Exit(exitcode)
+        raise Exception(exitcode)
 
     def decrypt(self, data64):
         data = b64decode(data64)
@@ -897,7 +897,7 @@ def read_profiles(basepath):
 
 
 def get_profile(
-    basepath: str, interactive: bool, choice: Optional[str], list_profiles: bool
+    basepath: str, interactive: bool, choice: Optional[str], list_profiles: bool, ret_sections: bool
 ):
     """
     Select profile to use by either reading profiles.ini or assuming given
@@ -930,7 +930,8 @@ def get_profile(
             raise Exit(Exit.CLEAN)
 
         sections = get_sections(profiles)
-
+        if ret_sections:
+            return len(sections)
         if len(sections) == 1:
             section = sections["1"]
 
@@ -947,7 +948,7 @@ def get_profile(
                 "We are in non-interactive mode and -c/--choice wasn't specified."
             )
             raise Exit(Exit.MISSING_CHOICE)
-
+        
         else:
             # Ask user which profile to open
             section = ask_section(sections)
@@ -1107,6 +1108,13 @@ def parse_sys_args() -> argparse.Namespace:
         version=__version__,
         help="Display version of firefox_decrypt and exit",
     )
+    parser.add_argument(
+        "--decrypt-all",
+        action="store_true",
+        default=False,
+        help="Tries to decrypt all profiles.",
+        )
+    # make a loop in main to do the whole process with all profiles. :')
 
     args = parser.parse_args()
 
@@ -1189,28 +1197,47 @@ def main() -> None:
                 stream,
                 encoding,
             )
-
-    # Load Mozilla profile and initialize NSS before asking the user for input
-    moz = MozillaInteraction(args.non_fatal_decryption)
-
+    
     basepath = os.path.expanduser(args.profile)
+    return_sections = False
+    section_count = 1
+    if args.decrypt_all:
+        args.interactive = False
+        args.non_fatal_decryption = True
+        return_sections = True
+        section_count = get_profile(basepath, args.interactive ,args.choice ,args.list ,return_sections)
+        return_sections = False
+        
+    for i in range(1,section_count+1):
+        try:        
+            # Load Mozilla profile and initialize NSS before asking the user for input
+            moz = MozillaInteraction(args.non_fatal_decryption)
+        
+            profile = ""
+        
+            if args.decrypt_all:
+                profile = get_profile(basepath, args.interactive , str(i), args.list, return_sections)
+            else:    
+                # Read profiles from profiles.ini in profile folder
+                profile = get_profile(basepath, args.interactive, args.choice, args.list, return_sections)
 
-    # Read profiles from profiles.ini in profile folder
-    profile = get_profile(basepath, args.interactive, args.choice, args.list)
+            # Start NSS for selected profile
+            moz.load_profile(profile)
+            # Check if profile is password protected and prompt for a password
+            moz.authenticate(args.interactive)
+            # Decode all passwords
+            outputs = moz.decrypt_passwords()
 
-    # Start NSS for selected profile
-    moz.load_profile(profile)
-    # Check if profile is password protected and prompt for a password
-    moz.authenticate(args.interactive)
-    # Decode all passwords
-    outputs = moz.decrypt_passwords()
+            # Export passwords into one of many formats
+            formatter = args.format(outputs, args)
+            formatter.output()
 
-    # Export passwords into one of many formats
-    formatter = args.format(outputs, args)
-    formatter.output()
-
-    # Finally shutdown NSS
-    moz.unload_profile()
+            # Finally shutdown NSS
+            moz.unload_profile()
+        except Exception as e:
+            if args.decrypt_all:
+                print(f"Exception {e} happened, moving to next section!")
+            continue
 
 
 def run_ffdecrypt():
