@@ -212,38 +212,40 @@ def find_nss(locations: list[str], nssname: str) -> ct.CDLL:
     fail_errors: list[tuple[str, str]] = []
 
     OS = ("Windows", "Darwin")
+    sublocations = ("firefox", "thunderbird", "")
 
     for loc in locations:
-        nsslib = os.path.join(loc, nssname)
-        LOG.debug("Loading NSS library from %s", nsslib)
+        for subloc in sublocations:
+            nsslib = os.path.join(loc, subloc, nssname)
+            LOG.debug("Loading NSS library from %s", nsslib)
 
-        if SYSTEM in OS:
-            # On windows in order to find DLLs referenced by nss3.dll
-            # we need to have those locations on PATH
-            os.environ["PATH"] = ";".join([loc, os.environ["PATH"]])
-            LOG.debug("PATH is now %s", os.environ["PATH"])
-            # However this doesn't seem to work on all setups and needs to be
-            # set before starting python so as a workaround we chdir to
-            # Firefox's nss3.dll/libnss3.dylib location
-            if loc:
-                if not os.path.isdir(loc):
-                    # No point in trying to load from paths that don't exist
-                    continue
+            if SYSTEM in OS:
+                # On windows in order to find DLLs referenced by nss3.dll
+                # we need to have those locations on PATH
+                os.environ["PATH"] = ";".join([loc, os.environ["PATH"]])
+                LOG.debug("PATH is now %s", os.environ["PATH"])
+                # However this doesn't seem to work on all setups and needs to be
+                # set before starting python so as a workaround we chdir to
+                # Firefox's nss3.dll/libnss3.dylib location
+                if loc:
+                    if not os.path.isdir(loc):
+                        # No point in trying to load from paths that don't exist
+                        continue
 
-                workdir = os.getcwd()
-                os.chdir(loc)
+                    workdir = os.getcwd()
+                    os.chdir(loc)
 
-        try:
-            nss: ct.CDLL = ct.CDLL(nsslib)
-        except OSError as e:
-            fail_errors.append((nsslib, str(e)))
-        else:
-            LOG.debug("Loaded NSS library from %s", nsslib)
-            return nss
-        finally:
-            if SYSTEM in OS and loc:
-                # Restore workdir changed above
-                os.chdir(workdir)
+            try:
+                nss: ct.CDLL = ct.CDLL(nsslib)
+            except OSError as e:
+                fail_errors.append((nsslib, str(e)))
+            else:
+                LOG.debug("Loaded NSS library from %s", nsslib)
+                return nss
+            finally:
+                if SYSTEM in OS and loc:
+                    # Restore workdir changed above
+                    os.chdir(workdir)
 
     else:
         LOG.error(
