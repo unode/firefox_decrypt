@@ -10,7 +10,7 @@ jobs:
         # pypy3 not yet up to speed with py3.9 typing hints
         # python-version: [3.9, 3.10.0-alpha.6, pypy3]
         python-version: ['3.9', '3.10', '3.11']
-        firefox: ['87.0', 'latest-esr', 'latest']
+        firefox: ['latest-esr', 'latest']
     env:
       # Needed to force UTF-8 and have consistent behavior in Windows
       PYTHONUTF8: 1
