@@ -289,17 +289,16 @@ def load_libnss():
         nssname = "nss3.dll"
         if not SYS64:
             locations += [
-                "",  # Current directory or system lib finder
                 "C:\\Program Files (x86)\\Mozilla Firefox",
                 "C:\\Program Files (x86)\\Firefox Developer Edition",
                 "C:\\Program Files (x86)\\Mozilla Thunderbird",
                 "C:\\Program Files (x86)\\Nightly",
                 "C:\\Program Files (x86)\\SeaMonkey",
                 "C:\\Program Files (x86)\\Waterfox",
+                "",  # Current directory or system lib finder
             ]
 
         locations += [
-            "",  # Current directory or system lib finder
             os.path.expanduser("~\\AppData\\Local\\Mozilla Firefox"),
             os.path.expanduser("~\\AppData\\Local\\Firefox Developer Edition"),
             os.path.expanduser("~\\AppData\\Local\\Mozilla Thunderbird"),
@@ -312,6 +311,7 @@ def load_libnss():
             "C:\\Program Files\\Nightly",
             "C:\\Program Files\\SeaMonkey",
             "C:\\Program Files\\Waterfox",
+            "",  # Current directory or system lib finder
         ]
 
         # If either of the supported software is in PATH try to use it
@@ -325,7 +325,6 @@ def load_libnss():
     elif SYSTEM == "Darwin":
         nssname = "libnss3.dylib"
         locations += [
-            "",  # Current directory or system lib finder
             "/usr/local/lib/nss",
             "/usr/local/lib",
             "/opt/local/lib/nss",
@@ -338,13 +337,13 @@ def load_libnss():
             "/Applications/Thunderbird.app/Contents/MacOS",
             "/Applications/SeaMonkey.app/Contents/MacOS",
             "/Applications/Waterfox.app/Contents/MacOS",
+            "",  # Current directory or system lib finder
         ]
 
     else:
         nssname = "libnss3.so"
         if SYS64:
             locations += [
-                "",  # Current directory or system lib finder
                 "/usr/lib64",
                 "/usr/lib64/nss",
                 "/usr/lib",
@@ -354,10 +353,10 @@ def load_libnss():
                 "/opt/local/lib",
                 "/opt/local/lib/nss",
                 os.path.expanduser("~/.nix-profile/lib"),
+                "",  # Current directory or system lib finder
             ]
         else:
             locations += [
-                "",  # Current directory or system lib finder
                 "/usr/lib",
                 "/usr/lib/nss",
                 "/usr/lib32",
@@ -369,6 +368,7 @@ def load_libnss():
                 "/opt/local/lib",
                 "/opt/local/lib/nss",
                 os.path.expanduser("~/.nix-profile/lib"),
+                "",  # Current directory or system lib finder
             ]
 
     # If this succeeds libnss was loaded
