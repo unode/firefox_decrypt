@@ -282,7 +282,7 @@ def load_libnss():
     """Load libnss into python using the CDLL interface"""
 
     locations: list[str] = [
-        os.environ.get("NSS_LIB_PATH", ""),
+        os.environ.get("NSS_LIB_PATH", "."),
     ]
 
     if SYSTEM == "Windows":
