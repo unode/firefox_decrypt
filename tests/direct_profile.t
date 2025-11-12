@@ -52,6 +52,11 @@ class TestDirectProfilePass(unittest.TestCase):
                                  "test_profile_firefox_59")
         self.run_firefox_with_password()
 
+    def test_firefox_144(self):
+        self.test = os.path.join(lib.get_test_data(),
+                                 "test_profile_firefox_144")
+        self.run_firefox_with_password()
+
     def test_firefox_non_ascii(self):
         self.test = os.path.join(lib.get_test_data(),
                                  "test_profile_firefox_LЮшр/")

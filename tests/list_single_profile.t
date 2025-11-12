@@ -42,6 +42,10 @@ class TestSingleProfile(unittest.TestCase):
         self.output_data = "list_single_59"
         self.listing_from_single_profile()
 
+    def test_firefox_144(self):
+        self.test_profile = "test_profile_firefox_144"
+        self.output_data = "list_single_144"
+        self.listing_from_single_profile()
 
 if __name__ == "__main__":
     from simpletap import TAPTestRunner

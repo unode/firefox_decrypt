@@ -51,6 +51,13 @@ class TestJSON(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd, stderr=sys.stderr)
         self.validate_default(output)
 
+    def test_firefox_144_default(self):
+        test = os.path.join(self.test, "test_profile_firefox_144")
+
+        cmd = lib.get_script() + [test, "--format", "json"]
+        output = lib.run(cmd, stdin=self.pwd, stderr=sys.stderr)
+        self.validate_default(output)
+
     @unittest.skipIf(lib.platform == "Windows",
                      "Windows DLL isn't backwards compatible")
     def test_firefox_nopassword_46_default(self):

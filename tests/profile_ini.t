@@ -50,6 +50,14 @@ class TestProfileIni(unittest.TestCase):
         output = lib.run(cmd, stdin=payload)
         self.validate(output)
 
+    def test_firefox_144(self):
+        cmd = lib.get_script() + [self.test]
+        choice = "7"
+        payload = '\n'.join((choice, self.pwd))
+
+        output = lib.run(cmd, stdin=payload)
+        self.validate(output)
+
     def test_firefox_non_ascii(self):
         cmd = lib.get_script() + [self.test]
         choice = "5"

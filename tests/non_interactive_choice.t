@@ -43,6 +43,13 @@ class TestNonInteractiveChoice(unittest.TestCase):
         out = lib.run(cmd, stdin=pwd)
         self.validate(out)
 
+    def test_firefox_144(self):
+        cmd = lib.get_script() + [lib.get_test_data(), "-nc", "7"]
+        pwd = lib.get_password()
+
+        out = lib.run(cmd, stdin=pwd)
+        self.validate(out)
+
     @unittest.skipIf(lib.platform == "Windows",
                      "Windows DLL isn't backwards compatible")
     def test_firefox_nopass_46(self):

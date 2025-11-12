@@ -144,6 +144,34 @@ class TestCSV(unittest.TestCase):
         output = lib.run(cmd, stdin=self.pwd)
         self.validate_vertbar(output)
 
+    def test_firefox_144_default(self):
+        test = os.path.join(self.test, "test_profile_firefox_144")
+
+        cmd = lib.get_script() + [test, "--format", "csv"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_default(output)
+
+    def test_firefox_144_tabular(self):
+        test = os.path.join(self.test, "test_profile_firefox_144")
+
+        cmd = lib.get_script() + [test, "--format", "tabular"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_tabular(output)
+
+    def test_firefox_144_semicol(self):
+        test = os.path.join(self.test, "test_profile_firefox_144")
+
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", ";", "--csv-quotechar", "'"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_semicol(output)
+
+    def test_firefox_144_vertbar(self):
+        test = os.path.join(self.test, "test_profile_firefox_144")
+
+        cmd = lib.get_script() + [test, "--format", "csv", "--csv-delimiter", "\t", "--csv-quotechar", "|"]
+        output = lib.run(cmd, stdin=self.pwd)
+        self.validate_vertbar(output)
+
     @unittest.skipIf(lib.platform == "Windows",
                      "Windows DLL isn't backwards compatible")
     def test_firefox_nopassword_46_default(self):
