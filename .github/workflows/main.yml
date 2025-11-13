@@ -33,8 +33,6 @@ jobs:
     env:
       # Needed to force UTF-8 and have consistent behavior in Windows
       PYTHONUTF8: 1
-      # Compile NSS for Linux 64 bits
-      USE_64: 1
     steps:
       - uses: actions/checkout@v5
       - name: Set up Python
@@ -68,7 +66,7 @@ jobs:
             dist
           key: ${{ matrix.nss-source }}-${{ matrix.os }}
 
-      - name: Build NSS from source
+      - name: Build (Release) NSS from source
         if: |
           (
           startsWith(matrix.nss-source, 'NSS') && matrix.os == 'ubuntu' && steps.cache-nss.outputs.cache-hit != 'true'
@@ -80,7 +78,7 @@ jobs:
           wget https://hg.mozilla.org/projects/nss/archive/${{ matrix.nss-source }}.zip
           unzip ${{ matrix.nss-source }}.zip
           cd nss-${{ matrix.nss-source }}
-          ./build.sh
+          ./build.sh -o
 
       - name: Prepare system-level lib resolution
         if: |
@@ -88,7 +86,7 @@ jobs:
           startsWith(matrix.nss-source, 'NSS') && matrix.os == 'ubuntu'
           )
         run: |
-          echo "${{ github.workspace }}/dist/Debug/lib" > /etc/ld.so.conf.d/nss-libs.conf
+          echo "${{ github.workspace }}/dist/Release/lib" > /etc/ld.so.conf.d/nss-libs.conf
           ldconfig
 
       - name: Run tests
