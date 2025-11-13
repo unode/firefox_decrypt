@@ -7,28 +7,29 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        # os: [ubuntu, macos, windows]
-        # # pypy3 not yet up to speed with py3.9 typing hints
-        # # python-version: [3.9, 3.10.0-alpha.6, pypy3]
-        # python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
-        # nss-source: ['latest-esr', 'latest', 'NSS_3_117_RTM', 'NSS_3_112_2_RTM', 'system']
-        os: [ubuntu]
-        python-version: ['3.12']
-        nss-source: ['NSS_3_117_RTM']
+        os: [ubuntu, macos, windows]
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        # We need NSS 3.113+ to support Firefox 144 profiles
+        # See https://github.com/unode/firefox_decrypt/issues/120
+        nss-source: ['latest-esr', 'latest', 'NSS_3_117_RTM', 'system']
         exclude:
           - os: macos
+            # Not installing from source on MacOS
             nss-source: NSS_3_117_RTM
           - os: macos
-            nss-source: NSS_3_112_2_RTM
-          - os: macos
+            # Firefox bundles don't work well for us
             nss-source: latest
           - os: macos
+            # Firefox bundles don't work well for us
             nss-source: latest-esr
           - os: windows
+            # Not installing from source on Windows
             nss-source: NSS_3_117_RTM
           - os: windows
-            nss-source: NSS_3_112_2_RTM
-          - os: windows
+            # No system lib for Windows
+            nss-source: system
+          - os: ubuntu
+            # Official nss packages are way too old
             nss-source: system
     env:
       # Needed to force UTF-8 and have consistent behavior in Windows
