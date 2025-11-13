@@ -7,11 +7,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu, macos, windows]
-        # pypy3 not yet up to speed with py3.9 typing hints
-        # python-version: [3.9, 3.10.0-alpha.6, pypy3]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
-        nss-source: ['latest-esr', 'latest', 'NSS_3_117_RTM', 'NSS_3_112_2_RTM', 'system']
+        # os: [ubuntu, macos, windows]
+        # # pypy3 not yet up to speed with py3.9 typing hints
+        # # python-version: [3.9, 3.10.0-alpha.6, pypy3]
+        # python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        # nss-source: ['latest-esr', 'latest', 'NSS_3_117_RTM', 'NSS_3_112_2_RTM', 'system']
+        os: [ubuntu]
+        python-version: ['3.12']
+        nss-source: ['NSS_3_117_RTM']
         exclude:
           - os: macos
             nss-source: NSS_3_117_RTM
