@@ -86,8 +86,8 @@ jobs:
           startsWith(matrix.nss-source, 'NSS') && matrix.os == 'ubuntu'
           )
         run: |
-          echo "${{ github.workspace }}/dist/Release/lib" > /etc/ld.so.conf.d/nss-libs.conf
-          ldconfig
+          echo "${{ github.workspace }}/dist/Release/lib" | sudo tee /etc/ld.so.conf.d/nss-libs.conf
+          sudo ldconfig
 
       - name: Run tests
         run: |
