@@ -9,27 +9,69 @@ jobs:
         os: [ubuntu, macos, windows]
         # pypy3 not yet up to speed with py3.9 typing hints
         # python-version: [3.9, 3.10.0-alpha.6, pypy3]
-        python-version: ['3.9', '3.10', '3.11']
-        firefox: ['latest-esr', 'latest']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+        nss-source: ['latest-esr', 'latest', 'NSS_3_117_RTM', 'NSS_3_112_2_RTM', 'system']
     env:
       # Needed to force UTF-8 and have consistent behavior in Windows
       PYTHONUTF8: 1
+      # Compile NSS for Linux 64 bits
+      USE_64: 1
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v5
       - name: Set up Python
-        uses: actions/setup-python@master
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Setup firefox ${{ matrix.firefox }}
+
+      - name: Setup Firefox ${{ matrix.firefox }}
         if: |
-          matrix.os == 'ubuntu' ||
-          (matrix.os == 'windows' && matrix.firefox == '87.0')
+          startsWith(matrix.nss-source, 'latest') && (
+            matrix.os == 'ubuntu' || matrix.os == 'windows'
+          )
         uses: browser-actions/setup-firefox@latest
         with:
           firefox-version: ${{ matrix.firefox }}
+
       - name: Install nss via homebrew
-        if: ${{ matrix.os == 'macos' }}
-        run: brew install nss
+        if: |
+          (matrix.os == 'macos' && matrix.nss-source == 'system')
+        run: |
+          brew install nss
+          brew list --versions nss
+
+      - name: Cache NSS built from source
+        id: cache-nss
+        uses: actions/cache@v4
+        with:
+          path: |
+            nss-${{ matrix.nss-source }}
+            nspr
+            dist
+          key: ${{ matrix.nss-source }}-${{ matrix.os }}
+
+      - name: Build NSS from source
+        if: |
+          (
+          startsWith(matrix.nss-source, 'NSS') && matrix.os == 'ubuntu' && steps.cache-nss.outputs.cache-hit != 'true'
+          )
+        run: |
+          apt update && apt install -y mercurial git ninja-build python3-pip
+          python3 -m pip install gyp-next
+          hg clone https://hg.mozilla.org/projects/nspr
+          wget https://hg.mozilla.org/projects/nss/archive/${{ matrix.nss-source }}.zip
+          unzip ${{ matrix.nss-source }}.zip
+          cd nss-${{ matrix.nss-source }}
+          ./build.sh
+
+      - name: Prepare system-level lib resolution
+        if: |
+          (
+          startsWith(matrix.nss-source, 'NSS') && matrix.os == 'ubuntu'
+          )
+        run: |
+          echo "${{ github.workspace }}/dist/Debug/lib" > /etc/ld.so.conf.d/nss-libs.conf
+          ldconfig
+
       - name: Run tests
         run: |
           cd tests
