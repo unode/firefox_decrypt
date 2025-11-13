@@ -78,7 +78,7 @@ jobs:
           wget https://hg.mozilla.org/projects/nss/archive/${{ matrix.nss-source }}.zip
           unzip ${{ matrix.nss-source }}.zip
           cd nss-${{ matrix.nss-source }}
-          ./build.sh -o
+          ./build.sh -o --enable-legacy-db
 
       - name: Prepare system-level lib resolution
         if: |
