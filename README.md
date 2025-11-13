@@ -43,6 +43,8 @@ libnss3 is part of https://developer.mozilla.org/docs/Mozilla/Projects/NSS
 If you need to decode passwords from Firefox 3 or older, although not officially supported,
 there is a patch in [this pull request](https://github.com/unode/firefox_decrypt/pull/36).
 
+**NOTE** :warning: : Firefox 144 introduced a new encryption algorithm for its password store while breaking direct use of the bundled libnss3.so lib (see issue [#120](https://github.com/unode/firefox_decrypt/issues/120)).
+If you are trying to use `firefox_decrypt` on Linux to access a Firefox 144+ profile, please install `libnss3` version 3.113 or newer.
 
 #### Usage
 
