@@ -74,7 +74,7 @@ def get_version() -> str:
         return p.stdout.strip()
 
 
-__version_info__ = (1, 1, 2)
+__version_info__ = (1, 1, 2, "+git")
 __version__: str = get_version()
 
 
