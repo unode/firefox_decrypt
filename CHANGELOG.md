@@ -1,6 +1,8 @@
 #### Changelog
 
-##### 1.1.1+git
+##### 1.1.2+git
+
+##### 1.1.2
 - Rename `project.script` from `firefox_decrypt` to `firefox-decrypt` for consistency with project name
 - Include Darwin homebrew path in nss search locations
 
