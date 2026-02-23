@@ -1,6 +1,7 @@
 #### Changelog
 
-##### 1.1.2+git
+##### 1.1.3
+- Fix 1.1.2 `version.t` test failure due to out-of-sync CHANGELOG entries
 
 ##### 1.1.2
 - Rename `project.script` from `firefox_decrypt` to `firefox-decrypt` for consistency with project name
