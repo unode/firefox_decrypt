@@ -1,5 +1,7 @@
 #### Changelog
 
+##### 1.1.3+git
+
 ##### 1.1.3
 - Fix 1.1.2 `version.t` test failure due to out-of-sync CHANGELOG entries
 
